@@ -3,6 +3,7 @@ import { Play } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import WalletDisplay from '@/components/WalletDisplay';
 import { Button } from '@/components/ui/button';
+import { ConnectButton } from '@mysten/dapp-kit';
 
 interface HeaderProps {
   className?: string;
@@ -56,6 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
           </Button>
         )}
 
+        <ConnectButton />
         {/* Show wallet display when authenticated, login button when not */}
         {isAuthenticated ? (
           <WalletDisplay user={user} onLogout={onLogout} />
