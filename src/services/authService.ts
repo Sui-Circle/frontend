@@ -2,7 +2,7 @@
  * Authentication service for zkLogin integration
  */
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'https://backend-96n2.onrender.com';
 
 export interface AuthUser {
   zkLoginAddress: string;
@@ -55,7 +55,7 @@ export interface VerifyResponse {
   };
 }
 
-export type OAuthProvider = 'google' | 'github';
+export type OAuthProvider = 'github';
 
 class AuthService {
   private token: string | null = null;
@@ -308,64 +308,39 @@ class AuthService {
   /**
    * Open OAuth popup window or redirect
    */
- openOAuthPopup(authUrl: string): Promise<{ code: string; state?: string }> {
-  return new Promise((resolve, reject) => {
-    console.log('Opening OAuth popup with URL:', authUrl);
-    // Open popup
-    const popup = window.open(authUrl, 'OAuth', 'width=600,height=700');
-    
-    if (!popup) {
-      console.error('Failed to open popup window');
-      reject(new Error('Failed to open popup. Please allow popups for this site.'));
-      return;
+  openOAuthPopup(authUrl: string): Promise<{ code: string; state?: string }> {
+    // For development, we'll use a redirect flow instead of popup
+    // Store the current session info and redirect
+    const urlParams = new URLSearchParams(authUrl.split('?')[1]);
+    const state = urlParams.get('state');
+
+    // Store session info for when we return
+    if (state) {
+      localStorage.setItem('oauth_state', state);
     }
-    
-    console.log('Popup opened successfully, waiting for response...');
-    
-    // Listen for messages from the popup
-    const handleMessage = (event: MessageEvent) => {
-      console.log('Received message from popup:', event.data);
-      // Verify origin if needed
-      
-      if (event.data.type === 'oauth_success') {
-        console.log('OAuth success message received:', event.data.data);
-        window.removeEventListener('message', handleMessage);
-        resolve({ 
-          code: event.data.data.code || '', 
-          state: event.data.data.state 
-        });
-      } else if (event.data.type === 'oauth_error') {
-        console.error('OAuth error message received:', event.data.error);
-        window.removeEventListener('message', handleMessage);
-        reject(new Error(event.data.error || 'Authentication failed'));
-      }
-    };
-    
-    window.addEventListener('message', handleMessage);
-    console.log('Message event listener added');
-  });
-}
+
+    // Redirect to OAuth provider
+    window.location.href = authUrl;
+
+    // This promise will never resolve because we're redirecting
+    // The actual handling will happen when the user returns
+    return new Promise(() => {});
+  }
+
   /**
    * Handle OAuth redirect callback
    */
   static handleOAuthRedirect(): Promise<{ code: string; state?: string }> | null {
-    console.log('handleOAuthRedirect called, checking URL parameters...');
-    console.log('Current URL:', window.location.href);
-    
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const state = urlParams.get('state');
     const error = urlParams.get('error');
 
-    console.log('URL parameters parsed:', { code: code?.substring(0, 10) + '...', state, error });
-
     if (error) {
-      console.error(`OAuth error from provider: ${error}`);
       throw new Error(`OAuth error: ${error}`);
     }
 
     if (code) {
-      console.log('Authorization code found, clearing URL parameters...');
       // Clear the URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
 
@@ -375,7 +350,6 @@ class AuthService {
       });
     }
 
-    console.log('No authorization code found in URL');
     return null;
   }
 }

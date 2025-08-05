@@ -3,7 +3,7 @@
  * Handles all file-related operations with proper authentication
  */
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'https://backend-96n2.onrender.com';
 
 export interface FileMetadata {
   cid: string;

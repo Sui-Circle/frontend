@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import type { OAuthProvider } from '../services/authService';
 import {
-  GoogleIcon
+  GitHubIcon
 } from './icons/SocialIcons';
 
 interface ZkLoginAuthProps {
@@ -18,27 +18,19 @@ const ZkLoginAuth: React.FC<ZkLoginAuthProps> = ({ onAuthSuccess, onAuthError })
   useEffect(() => {
     const handleOAuthCallback = async () => {
       try {
-        console.log('Checking for OAuth callback...');
         const callbackResult = (authService as any).constructor.handleOAuthRedirect();
-        console.log('Callback result:', callbackResult);
-        
         if (callbackResult) {
           setIsLoading(true);
           const { code, state } = await callbackResult;
-          console.log('OAuth callback received:', { code: code?.substring(0, 10) + '...', state });
 
           // Get session ID from localStorage (stored during login initiation)
           const sessionId = localStorage.getItem('oauth_session_id');
-          console.log('Retrieved session ID from localStorage:', sessionId);
-          
           if (!sessionId) {
             throw new Error('No session ID found');
           }
 
           // Complete authentication
-          console.log('Completing authentication with:', { sessionId, code, state });
           const authResponse = await authService.completeAuthentication(sessionId, code, state);
-          console.log('Authentication response:', authResponse);
 
           if (!authResponse.success) {
             throw new Error('Failed to complete authentication');
@@ -53,17 +45,12 @@ const ZkLoginAuth: React.FC<ZkLoginAuthProps> = ({ onAuthSuccess, onAuthError })
         }
       } catch (error) {
         console.error('OAuth callback failed:', error);
-        console.error('Error details:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined
-        });
         onAuthError(error instanceof Error ? error.message : 'OAuth callback failed');
         // Clean up on error
         localStorage.removeItem('oauth_session_id');
         localStorage.removeItem('oauth_state');
       } finally {
         setIsLoading(false);
-        setLoadingProvider(null);
       }
     };
 
@@ -90,38 +77,12 @@ const ZkLoginAuth: React.FC<ZkLoginAuthProps> = ({ onAuthSuccess, onAuthError })
 
       // Store session ID for when we return from OAuth
       localStorage.setItem('oauth_session_id', sessionId);
-      console.log('Session ID stored in localStorage');
 
-      // Step 2: Open OAuth popup
-      console.log('Opening OAuth popup...');
-      try {
-        const result = await authService.openOAuthPopup(authUrl);
-        console.log('OAuth popup result:', result);
-        
-        // If we get here, the popup was closed with a result
-        if (result && result.code) {
-          console.log('Received code from popup, completing authentication...');
-          const authResponse = await authService.completeAuthentication(
-            sessionId,
-            result.code,
-            result.state
-          );
-          
-          console.log('Authentication completed:', authResponse);
-          
-          // Clean up
-          localStorage.removeItem('oauth_session_id');
-          
-          // Success!
-          onAuthSuccess(authResponse.data);
-        }
-      } catch (popupError) {
-        console.error('OAuth popup error:', popupError);
-        throw popupError;
-      } finally {
-        setIsLoading(false);
-        setLoadingProvider(null);
-      }
+      // Step 2: Redirect to OAuth provider (this will leave the page)
+      console.log('Redirecting to OAuth provider...');
+      await authService.openOAuthPopup(authUrl);
+
+      // Note: Code after this point won't execute because we're redirecting
 
     } catch (error) {
       console.error('Login failed:', error);
@@ -132,24 +93,21 @@ const ZkLoginAuth: React.FC<ZkLoginAuthProps> = ({ onAuthSuccess, onAuthError })
       onAuthError(error instanceof Error ? error.message : 'Login failed');
       setIsLoading(false);
       setLoadingProvider(null);
-      
-      // Clean up on error
-      localStorage.removeItem('oauth_session_id');
     }
   };
 
   const providers: { id: OAuthProvider; name: string; icon: React.ReactNode; color: string }[] = [
     {
-      id: 'google',
-      name: 'Google',
-      icon: <GoogleIcon size={20} />,
-      color: '#4285f4'
+      id: 'github',
+      name: 'GitHub',
+      icon: <GitHubIcon size={20} />,
+      color: '#24292e'
     }
   ];
 
   return (
     <div className="w-full">
-      {/* Google Auth Button */}
+      {/* GitHub Auth Button */}
       <div className="space-y-4">
         {providers.map((provider) => (
           <button
