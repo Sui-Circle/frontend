@@ -31,7 +31,7 @@ export const SharedFileViewer: React.FC<SharedFileViewerProps> = ({
   onNavigateToAuth,
   onNavigateToLanding,
 }) => {
-  const { isAuthenticated, user, token, useTestMode } = useAuth();
+  const { isAuthenticated, user, token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shareData, setShareData] = useState<ShareLinkData | null>(null);
@@ -65,7 +65,7 @@ export const SharedFileViewer: React.FC<SharedFileViewerProps> = ({
 
         // If user is authenticated, try to load the file
         if (isAuthenticated && token) {
-          await loadFileContent(result.data.fileCid);
+          await loadFileContent();
         }
       }
     } catch (error) {
@@ -76,7 +76,8 @@ export const SharedFileViewer: React.FC<SharedFileViewerProps> = ({
     }
   };
 
-  const loadFileContent = async (fileCid: string) => {
+  const loadFileContent = async () => {
+    if (!shareData?.fileCid) return;
     try {
       // Use the shared file download service
       const result = await fileService.downloadSharedFile(shareId, token);
@@ -433,7 +434,7 @@ export const SharedFileViewer: React.FC<SharedFileViewerProps> = ({
             <p className="text-gray-600 mb-4">
               The file is available for download, but content preview is not available.
             </p>
-            <Button onClick={() => loadFileContent(shareData.fileCid)}>
+            <Button onClick={() => loadFileContent()}>
               Load File
             </Button>
           </div>

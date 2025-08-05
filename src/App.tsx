@@ -110,7 +110,6 @@ function App() {
           isAuthenticated={isAuthenticated}
           user={user}
           onLogout={handleLogout}
-          onNavigateToDashboard={() => setCurrentPage('filelist')}
         />
       )}
 

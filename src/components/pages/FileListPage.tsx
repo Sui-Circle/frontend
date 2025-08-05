@@ -1,20 +1,16 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import FileList from '@/components/FileList';
-import { ArrowRight, Upload, Send } from 'lucide-react';
 
 interface FileListPageProps {
-  onNavigateToTransfer?: () => void;
-  onNavigateToUpload?: () => void;
   isAuthenticated?: boolean;
   user?: any;
   onLogout?: () => void;
+  onNavigateToTransfer?: () => void;
+  onNavigateToUpload?: () => void;
 }
 
 export const FileListPage: React.FC<FileListPageProps> = ({
-  onNavigateToTransfer,
-  onNavigateToUpload,
   isAuthenticated = false,
   user,
   onLogout

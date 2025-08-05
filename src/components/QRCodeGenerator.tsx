@@ -173,7 +173,7 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
             </div>
 
             {/* Native Share Button (if supported) */}
-            {navigator.share && (
+            {typeof navigator.share === 'function' && (
               <Button
                 variant="default"
                 size="sm"

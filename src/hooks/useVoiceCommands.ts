@@ -1,4 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
+
+// Define types for Web Speech API if not available in TypeScript DOM lib
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
 import { toast } from 'sonner';
 import { PICOVOICE_CONFIG } from '@/config/picovoice';
 
@@ -9,7 +20,7 @@ export interface VoiceCommand {
 }
 
 export interface UseVoiceCommandsProps {
-  commands: VoiceCommand[];
+  commands?: VoiceCommand[];
   enabled?: boolean;
 }
 
@@ -26,10 +37,14 @@ export interface UseVoiceCommandsReturn {
 
 export const useVoiceCommands = ({
   commands = [],
-  enabled = true
-}: UseVoiceCommandsProps): UseVoiceCommandsReturn => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
+}: UseVoiceCommandsProps = {}): UseVoiceCommandsReturn => {
   const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  // Using any type since SpeechRecognition might not be available in all environments
+  // We're not using the recognition state directly, but keeping the setter for API compatibility
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_, setRecognition] = useState<any>(null);
   const [voiceCommands, setVoiceCommands] = useState<VoiceCommand[]>(commands);
 
   // Check if speech recognition is supported
@@ -62,7 +77,7 @@ export const useVoiceCommands = ({
       setIsListening(false);
     };
 
-    recognitionInstance.onerror = (event) => {
+    recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Voice recognition error:', event.error);
       setIsListening(false);
       
@@ -73,7 +88,7 @@ export const useVoiceCommands = ({
       }
     };
 
-    recognitionInstance.onresult = (event) => {
+    recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
       const lastResult = event.results[event.results.length - 1];
       if (lastResult.isFinal) {
         const transcript = lastResult[0].transcript.toLowerCase().trim();

@@ -75,8 +75,7 @@ export const VoiceCommandDemo: React.FC = () => {
   const {
     isListening,
     isSupported,
-    startListening,
-    stopListening,
+    // Removed unused variables
     toggleListening,
     speakText
   } = useVoiceCommands({

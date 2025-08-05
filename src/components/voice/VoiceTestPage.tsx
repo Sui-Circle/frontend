@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { VoiceCommandButton } from './VoiceCommandButton';
 import { VoiceDebugTest } from './VoiceDebugTest';
-import { Mic, FileText, Upload, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { Mic, FileText, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const VoiceTestPage: React.FC = () => {

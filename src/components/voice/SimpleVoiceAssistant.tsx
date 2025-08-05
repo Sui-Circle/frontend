@@ -1,4 +1,15 @@
 import React, { useState, useRef } from 'react';
+
+// Define types for Web Speech API if not available in TypeScript DOM lib
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -104,13 +115,13 @@ export const SimpleVoiceAssistant: React.FC<SimpleVoiceAssistantProps> = ({
       setIsListening(false);
     };
     
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('🎤 Recognition error:', event.error);
       setIsListening(false);
       toast.error(`Voice recognition error: ${event.error}`);
     };
     
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       const result = event.results[event.results.length - 1];
       if (result.isFinal) {
         const transcript = result[0].transcript.trim();

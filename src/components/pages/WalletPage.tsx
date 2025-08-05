@@ -1,8 +1,6 @@
 import React from 'react';
 import { Wallet as WalletIcon, Copy } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
-import { Button } from '@/components/ui/button';
-import { Transaction } from '@/types';
 
 interface WalletPageProps {
   walletAddress?: string;
@@ -12,7 +10,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({
   walletAddress = "Njnjol...JToop" 
 }) => {
   // Mock transaction data based on the design
-  const transactions: Transaction[] = [
+  const transactions: any[] = [
     {
       id: '1',
       type: 'sent',

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSealEncryption } from '../hooks/useSealEncryption';
-import { fileService, FileMetadata } from '../services/fileService';
+import { fileService } from '../services/fileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield, X, FileIcon, Upload } from 'lucide-react';
 import { VoiceCommandButton } from '@/components/voice/VoiceCommandButton';
@@ -80,17 +80,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
   }, []);
 
-  // Voice command handler for upload
-  const handleVoiceUpload = useCallback(() => {
-    console.log('Voice command: Upload file triggered');
-    if (attachedFiles.length > 0) {
-      handleUploadAll();
-      toast.success('Voice command: Starting upload');
-    } else {
-      toast.error('No files attached. Please attach files first.');
-    }
-  }, [attachedFiles]);
-
   // Debug encryption state
   console.log('🔐 Current encryption state:', encryptionState);
 
@@ -149,6 +138,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
       throw new Error('Please log in to upload files');
     }
 
+    // Additional check for zkLogin authentication
+    if (!useTestMode && !token) {
+      throw new Error('Authentication token missing. Please log in again.');
+    }
+
     console.log('📁 Uploading file:', attachedFile.name, attachedFile.size);
     console.log('🔐 Encryption state:', encryptionState);
 
@@ -204,6 +198,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
       );
 
       if (!result.success) {
+        // Check if error is related to zkLogin authentication
+        if (result.message?.includes('zkLogin parameters missing') ||
+            result.message?.includes('User authentication required')) {
+          throw new Error('Authentication expired. Please log in again to upload files.');
+        }
         throw new Error(result.message || 'Upload failed');
       }
 
@@ -212,6 +211,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
     } catch (error) {
       console.error('❌ Upload error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+
+      // Show specific error message for authentication issues
+      if (errorMessage.includes('Authentication expired') ||
+          errorMessage.includes('zkLogin parameters missing')) {
+        toast.error('Authentication expired. Please log in again.');
+      }
+
       return {
         success: false,
         message: errorMessage,
@@ -311,6 +317,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <Alert className="mb-6 border-amber-200 bg-amber-50">
             <AlertDescription className="text-amber-800">
               🔐 Please sign in to upload files securely.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Gas Fee Notice */}
+        {!useTestMode && isAuthenticated && (
+          <Alert className="mb-6 border-blue-200 bg-blue-50">
+            <AlertDescription className="text-blue-800">
+              💰 You will pay gas fees for uploading files to the blockchain. Make sure your wallet has sufficient SUI tokens.
             </AlertDescription>
           </Alert>
         )}
@@ -458,7 +473,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               ) : (
                 <>
                   <Shield className="w-4 h-4" />
-                  Start Upload
+                  {useTestMode ? 'Start Upload' : 'Upload & Pay Gas'}
                 </>
               )}
             </button>

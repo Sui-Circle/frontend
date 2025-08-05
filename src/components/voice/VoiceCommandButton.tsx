@@ -30,7 +30,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
   const [isSupported, setIsSupported] = useState(false);
   const [conversationState, setConversationState] = useState<ConversationState>('idle');
   const [lastTranscript, setLastTranscript] = useState<string>('');
-  const [textOnlyMode, setTextOnlyMode] = useState(false);
+  // Removed unused state variables
   const recognitionRef = useRef<any>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isProcessingRef = useRef(false);

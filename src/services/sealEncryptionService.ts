@@ -59,7 +59,8 @@ class SealEncryptionService {
       try {
         const sealModule = await import('@mysten/seal');
         console.log('📦 Seal module imported:', sealModule);
-        SealLibrary = sealModule.default || sealModule.Seal || sealModule;
+        // Handle different module formats
+        SealLibrary = sealModule;
       } catch (importError) {
         console.error('❌ Failed to import @mysten/seal:', importError);
         // For now, create a mock implementation to test the flow
@@ -152,7 +153,7 @@ class SealEncryptionService {
   /**
    * Decrypt encrypted file data
    */
-  async decryptFile(encryptedData: Uint8Array, secretKey: string): Promise<DecryptionResult> {
+  async decryptFile(encryptedData: Uint8Array, _secretKey: string): Promise<DecryptionResult> {
     try {
       // Ensure Seal is initialized
       await this.initialize();
@@ -166,7 +167,7 @@ class SealEncryptionService {
 
       console.log('🔓 Starting client-side decryption...');
 
-      const decryptionResult = await this._decryptData(encryptedData, secretKey);
+      const decryptionResult = await this._decryptData(encryptedData);
       if (!decryptionResult.success) {
         return {
           success: false,
@@ -262,7 +263,7 @@ class SealEncryptionService {
   /**
    * Decrypt data using the secret key
    */
-  private async _decryptData(encryptedData: Uint8Array, secretKey: string): Promise<{
+  private async _decryptData(encryptedData: Uint8Array): Promise<{
     success: boolean;
     decryptedData?: Uint8Array;
     error?: string;

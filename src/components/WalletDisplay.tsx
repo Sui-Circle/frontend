@@ -28,6 +28,12 @@ const WalletDisplay: React.FC<WalletDisplayProps> = ({
     hasZkAddress: user?.zkLoginAddress ? true : false
   });
 
+  // Define handleLogout function
+  const handleLogout = () => {
+    onLogout();
+    toast.success('Logged out successfully');
+  };
+
   if (!isAuthenticated || !user) {
     return null;
   }
@@ -82,11 +88,6 @@ const WalletDisplay: React.FC<WalletDisplayProps> = ({
       console.error('Failed to copy to clipboard:', error);
       toast.error('Failed to copy address');
     }
-  };
-
-  const handleLogout = () => {
-    onLogout();
-    toast.success('Logged out successfully');
   };
 
   return (

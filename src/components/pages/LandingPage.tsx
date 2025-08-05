@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Upload, ImageIcon } from 'lucide-react';
+import { ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import FileUpload from '@/components/FileUpload';
@@ -7,7 +7,6 @@ import { SimpleVoiceAssistant } from '@/components/voice/SimpleVoiceAssistant';
 import { toast } from 'sonner';
 
 interface LandingPageProps {
-  onFileUpload: (files: FileList) => void;
   onNavigateToAuth: () => void;
   onNavigateToFileList?: () => void;
   onNavigateToVoiceTest?: () => void;
@@ -15,10 +14,10 @@ interface LandingPageProps {
   isAuthenticated?: boolean;
   user?: any;
   onLogout?: () => void;
+  onFileUpload?: (files: FileList) => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
-  onFileUpload,
   onNavigateToAuth,
   onNavigateToFileList,
   onNavigateToVoiceTest,
