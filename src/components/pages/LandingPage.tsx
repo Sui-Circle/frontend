@@ -3,13 +3,11 @@ import { ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import FileUpload from '@/components/FileUpload';
-import { SimpleVoiceAssistant } from '@/components/voice/SimpleVoiceAssistant';
 import { toast } from 'sonner';
 
 interface LandingPageProps {
   onNavigateToAuth: () => void;
   onNavigateToFileList?: () => void;
-  onNavigateToVoiceTest?: () => void;
   onUploadSuccess?: () => void;
   isAuthenticated?: boolean;
   user?: any;
@@ -20,7 +18,6 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigateToAuth,
   onNavigateToFileList,
-  onNavigateToVoiceTest,
   onUploadSuccess,
   isAuthenticated = false,
   user,
@@ -39,25 +36,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   }, [showUpload]);
 
-  // Voice command handler for file attachment
-  const handleVoiceFileAttach = useCallback(() => {
-    console.log('📁 Voice command: Attach file triggered from LandingPage');
-    console.trace('📍 Call stack for file attach');
 
-    // Directly trigger the file input to open file manager
-    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-    if (fileInput) {
-      fileInput.click();
-      toast.success('Voice command activated: Opening file manager');
-    } else {
-      // Fallback to showing upload component
-      setShowUpload(true);
-      toast.success('Voice command activated: Opening file upload');
-    }
-  }, []);
-
-  // Check if speech recognition is supported (for the new voice assistant)
-  const isSupported = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -120,6 +99,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         onNavigateToDashboard={onNavigateToFileList}
       />
       
+
+      
       {/* Main Content */}
       <div className="flex flex-col items-center  px-4 py-16">
         {/* Hero Section */}
@@ -146,49 +127,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               onDrop={handleDrop}
             >
               <div className="flex flex-col items-center gap-4">
-                {/* Hidden file input - only triggered by the upload button */}
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                  id="file-upload"
-                />
+              {/* Hidden file input - only triggered by the upload button */}
+              <input
+                type="file"
+                multiple
+                onChange={handleFileInputChange}
+                className="hidden"
+                id="file-upload"
+              />
 
-                <Button
-                  asChild
-                  className="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
-                >
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <ImageIcon className="w-4 h-4" />
-                    Upload File
-                  </label>
-                </Button>
-
-                {/* Simple Voice Assistant */}
-                {isSupported && (
-                  <div className="flex flex-col items-center gap-2 mt-2">
-                    <SimpleVoiceAssistant
-                      onFileAttachCommand={handleVoiceFileAttach}
-                    />
-                    {onNavigateToVoiceTest && (
-                      <Button
-                        onClick={onNavigateToVoiceTest}
-                        variant="ghost"
-                        size="sm"
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        🎤 Test Voice Commands
-                      </Button>
-                    )}
-                  </div>
-                )}
-
+              <Button
+                asChild
+                className="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+              >
+                <label htmlFor="file-upload" className="cursor-pointer">
+                  <ImageIcon className="w-4 h-4" />
+                  Upload File
+                </label>
+              </Button>
+              
                 <p className="text-gray-600 text-sm">
-                  {isSupported
-                    ? 'or drag and drop a file, or use voice commands'
-                    : 'or drag and drop a file'
-                  }
+                  or drag and drop a file
                 </p>
               </div>
             </div>

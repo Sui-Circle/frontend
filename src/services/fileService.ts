@@ -3,7 +3,10 @@
  * Handles all file-related operations with proper authentication
  */
 
-const API_BASE_URL = 'https://backend-96n2.onrender.com';
+// const API_BASE_URL = 'https://backend-96n2.onrender.com';
+const API_BASE_URL ="http://localhost:3000";
+
+import { sealEncryptionService } from './sealEncryptionService';
 
 export interface FileMetadata {
   cid: string;
@@ -50,9 +53,7 @@ export interface DeleteResponse {
 
 class FileService {
   private getAuthHeaders(token: string | null): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    const headers: Record<string, string> = {};
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -77,36 +78,20 @@ class FileService {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch files');
+        return {
+          success: false,
+          data: { files: [] },
+          message: data.message || 'Failed to fetch files',
+        };
       }
-
-      // Normalize the response format
-      const backendFiles = data.files || data.data || data;
-      
-      if (!Array.isArray(backendFiles)) {
-        throw new Error('Invalid response format from server');
-      }
-
-      const formattedFiles: FileMetadata[] = backendFiles.map((file: any) => ({
-        cid: file.cid || file.fileCid,
-        filename: file.filename || file.name,
-        fileSize: file.fileSize || file.size,
-        uploadTimestamp: file.uploadTimestamp || file.timestamp || Date.now(),
-        uploader: file.uploader || 'user',
-        isOwner: true,
-        contentType: file.contentType,
-        isEncrypted: file.isEncrypted,
-        encryptionKeys: file.encryptionKeys,
-      }));
 
       return {
         success: true,
-        data: {
-          files: formattedFiles,
-        },
+        data: data.data || { files: [] },
+        message: data.message,
       };
     } catch (error) {
-      console.error('Failed to fetch files from backend:', error);
+      console.error('Failed to fetch files:', error);
       return {
         success: false,
         data: { files: [] },
@@ -131,14 +116,18 @@ class FileService {
     }
   ): Promise<UploadResponse> {
     try {
+      const endpoint = useTestMode ? `${API_BASE_URL}/file/upload-test` : `${API_BASE_URL}/file/upload`;
+
       const formData = new FormData();
-      const fileToUpload = encryptionData ? encryptionData.encryptedFile : file;
-      formData.append('file', fileToUpload);
 
-      const endpoint = useTestMode 
-        ? `${API_BASE_URL}/file/upload-test` 
-        : `${API_BASE_URL}/file/upload`;
+      // If encryption data provided, upload the encrypted file instead of original
+      if (encryptionData) {
+        formData.append('file', encryptionData.encryptedFile);
+      } else {
+        formData.append('file', file);
+      }
 
+      // Do NOT set Content-Type when sending FormData; the browser will set the correct multipart boundary
       const headers: Record<string, string> = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
@@ -150,10 +139,13 @@ class FileService {
         body: formData,
       });
 
-      const result: UploadResponse = await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Upload failed');
+        return {
+          success: false,
+          message: result.message || 'File upload failed',
+        };
       }
 
       // Add encryption information to the result if file was encrypted
@@ -181,20 +173,87 @@ class FileService {
   async downloadFile(
     cid: string,
     filename: string,
-    useTestMode: boolean = false
+    token: string | null,
+    useTestMode: boolean = false,
+    options?: { secretKey?: string; contentType?: string }
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const endpoint = useTestMode 
-        ? `/api/file/${cid}/download-test` 
-        : `/api/file/${cid}/download`;
+        ? `${API_BASE_URL}/file/${cid}/download-test` 
+        : `${API_BASE_URL}/file/${cid}/download`;
 
-      const response = await fetch(endpoint);
+      // Include Authorization header when token is provided
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers,
+      });
 
       if (!response.ok) {
         throw new Error('Failed to download file');
       }
 
-      // Create blob and trigger download
+      // Check encryption headers
+      const encryptedHeader = response.headers.get('X-File-Encrypted') === 'true';
+      const encryptionIdHeader = response.headers.get('X-Seal-Encryption-Id') || undefined;
+
+      if (encryptedHeader) {
+        // In test mode, just download the encrypted file as-is
+        if (useTestMode) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          return { success: true };
+        }
+
+        // Try client-side decryption if we have a secret key
+        if (options?.secretKey) {
+          try {
+            console.log('File is encrypted, attempting client-side decryption...', { encryptionIdHeader });
+            const encryptedBlob = await response.blob();
+            const encryptedArrayBuffer = await encryptedBlob.arrayBuffer();
+            const encryptedBytes = new Uint8Array(encryptedArrayBuffer);
+
+            await sealEncryptionService.initialize();
+            const dec = await sealEncryptionService.decryptFile(encryptedBytes, options.secretKey);
+
+            if (dec.success && dec.decryptedData) {
+              const contentType = options?.contentType || response.headers.get('Content-Type') || 'application/octet-stream';
+              const decryptedBlob = new Blob([dec.decryptedData], { type: contentType });
+              const url = window.URL.createObjectURL(decryptedBlob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+              return { success: true };
+            } else {
+              console.warn('Client-side decryption failed, falling back to backend decryption.', dec.error);
+              return this.downloadAndDecryptFile(cid, filename, token);
+            }
+          } catch (e) {
+            console.warn('Client-side decryption error, falling back to backend decryption.', e);
+            return this.downloadAndDecryptFile(cid, filename, token);
+          }
+        }
+
+        console.log('Encrypted file but no secret key provided; using backend decryption...');
+        return this.downloadAndDecryptFile(cid, filename, token);
+      }
+
+      // File is not encrypted, download normally
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -216,18 +275,60 @@ class FileService {
   }
 
   /**
-   * Delete all user files from backend
+   * Download and decrypt an encrypted file using backend decryption
+   */
+  async downloadAndDecryptFile(
+    cid: string,
+    filename: string,
+    token: string | null
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const endpoint = `${API_BASE_URL}/file/${cid}/download-encrypted`;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({}), // Empty body - backend handles decryption
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to download and decrypt file');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to download and decrypt file:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to download and decrypt file',
+      };
+    }
+  }
+
+  /**
+   * Clear all user's files
    */
   async clearUserFiles(token: string | null, useTestMode: boolean = false): Promise<DeleteResponse> {
     try {
-      if (!token && !useTestMode) {
-        throw new Error('Authentication required to delete files');
-      }
-
-      const endpoint = useTestMode 
-        ? `${API_BASE_URL}/files-test` 
-        : `${API_BASE_URL}/files`;
-
+      const endpoint = useTestMode ? `${API_BASE_URL}/files-test` : `${API_BASE_URL}/files`;
       const headers = this.getAuthHeaders(token);
 
       const response = await fetch(endpoint, {
@@ -238,24 +339,24 @@ class FileService {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to delete files');
+        throw new Error(data.message || 'Failed to clear files');
       }
 
       return {
         success: true,
-        message: data.message || 'Files deleted successfully',
+        message: data.message || 'All files cleared successfully',
       };
     } catch (error) {
-      console.error('Failed to delete files:', error);
+      console.error('Failed to clear files:', error);
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to delete files',
+        message: error instanceof Error ? error.message : 'Failed to clear files',
       };
     }
   }
 
   /**
-   * Delete a specific file from backend
+   * Delete a specific file
    */
   async deleteFile(
     cid: string,
@@ -263,14 +364,7 @@ class FileService {
     useTestMode: boolean = false
   ): Promise<DeleteResponse> {
     try {
-      if (!token && !useTestMode) {
-        throw new Error('Authentication required to delete file');
-      }
-
-      const endpoint = useTestMode 
-        ? `${API_BASE_URL}/file/${cid}/delete-test` 
-        : `${API_BASE_URL}/file/${cid}/delete`;
-
+      const endpoint = useTestMode ? `${API_BASE_URL}/file/${cid}/delete-test` : `${API_BASE_URL}/file/${cid}`;
       const headers = this.getAuthHeaders(token);
 
       const response = await fetch(endpoint, {
@@ -310,6 +404,7 @@ class FileService {
     filename?: string;
     contentType?: string;
     isEncrypted?: boolean;
+    encryptionId?: string;
   }> {
     try {
       // Use the new shared file download endpoint
@@ -344,6 +439,7 @@ class FileService {
 
       const contentType = downloadResponse.headers.get('Content-Type') || 'application/octet-stream';
       const isEncrypted = downloadResponse.headers.get('X-File-Encrypted') === 'true';
+      const encryptionId = downloadResponse.headers.get('X-Seal-Encryption-Id') || undefined;
 
       return {
         success: true,
@@ -351,6 +447,7 @@ class FileService {
         filename,
         contentType,
         isEncrypted,
+        encryptionId,
       };
     } catch (error) {
       console.error('Failed to download shared file:', error);

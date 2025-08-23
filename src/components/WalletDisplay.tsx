@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { GitHubIcon, CopyIcon, LogoutIcon } from './icons/SocialIcons';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { formatAddress } from '@/lib/utils';
 
 interface WalletDisplayProps {
   className?: string;
@@ -38,10 +39,10 @@ const WalletDisplay: React.FC<WalletDisplayProps> = ({
     return null;
   }
 
-  // Handle case where zkLoginAddress might not be available yet
-  const zkAddress = user.zkLoginAddress;
-  if (!zkAddress) {
-    // Show loading state while zkLogin address is being generated
+  // Get the appropriate address (either zkLogin or wallet)
+  const userAddress = user.zkLoginAddress || user.walletAddress;
+  if (!userAddress) {
+    // Show loading state while address is being generated
     return (
       <div className={`flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm ${className}`}>
         <div className="flex items-center gap-2">
@@ -74,11 +75,27 @@ const WalletDisplay: React.FC<WalletDisplayProps> = ({
       </div>
     );
   }
-
-  const formatAddress = (address: string) => {
-    if (showFullAddress || address.length <= 12) return address;
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  
+  // Generate a friendly name for the wallet
+  const getFriendlyWalletName = () => {
+    // If user has a name property, use it
+    if (user.name) {
+      return user.name;
+    }
+    
+    // If user has an email, use the part before the @ symbol
+    if (user.email) {
+      return user.email.split('@')[0];
+    }
+    
+    // Otherwise, use a shortened version of the address
+    return `Wallet ${userAddress.slice(0, 4)}`;
   };
+  
+  const friendlyName = getFriendlyWalletName();
+
+  // Use the formatAddress utility function
+  const formattedAddress = formatAddress(userAddress, showFullAddress);
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -100,22 +117,21 @@ const WalletDisplay: React.FC<WalletDisplayProps> = ({
 
         {/* User Info */}
         <div className="flex flex-col gap-0.5">
-          {user.email && (
-            <div className="text-xs text-slate-500 font-medium leading-none hidden sm:block">
-              {user.email}
-            </div>
-          )}
+          {/* Display friendly name */}
+          <div className="text-sm font-medium text-slate-800 leading-none">
+            {friendlyName}
+          </div>
           <div className="flex items-center gap-1.5">
             <span
-              className="font-mono text-sm font-semibold text-slate-800 bg-slate-100 px-2 py-1 rounded-md cursor-pointer hover:bg-slate-200 hover:text-slate-900 transition-colors select-none"
+              className="font-mono text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-1 rounded-md cursor-pointer hover:bg-slate-200 hover:text-slate-900 transition-colors select-none"
               onClick={() => setShowFullAddress(!showFullAddress)}
-              title={zkAddress}
+              title={userAddress}
             >
-              {formatAddress(zkAddress)}
+              {formattedAddress}
             </span>
             <button
               className="flex items-center justify-center p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-              onClick={() => copyToClipboard(zkAddress)}
+              onClick={() => copyToClipboard(userAddress)}
               title="Copy wallet address"
             >
               <CopyIcon size={14} />

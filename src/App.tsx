@@ -4,15 +4,13 @@ import { AuthPage } from '@/components/pages/AuthPage';
 import { FileListPage } from '@/components/pages/FileListPage';
 import { TransferPage } from '@/components/pages/TransferPage';
 import { SharedFileViewer } from '@/components/pages/SharedFileViewer';
-import { VoiceCommandDemo } from '@/components/voice/VoiceCommandDemo';
-import { VoiceTestPage } from '@/components/voice/VoiceTestPage';
 import { useAuth } from '@/contexts/AuthContext';
 import type { TransferConfig } from '@/types';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
-type AppState = 'landing' | 'auth' | 'filelist' | 'transfer' | 'success' | 'voicedemo' | 'voicetest' | 'sharedfile';
+type AppState = 'landing' | 'auth' | 'filelist' | 'transfer' | 'success' | 'sharedfile';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<AppState>('landing');
@@ -91,14 +89,13 @@ function App() {
           onFileUpload={handleFileUpload}
           onNavigateToAuth={() => setCurrentPage('auth')}
           onNavigateToFileList={() => setCurrentPage('filelist')}
-          onNavigateToVoiceTest={() => setCurrentPage('voicetest')}
           onUploadSuccess={handleUploadSuccess}
           isAuthenticated={isAuthenticated}
           user={user}
           onLogout={handleLogout}
         />
       )}
-
+      
       {currentPage === 'auth' && (
         <AuthPage onAuthenticate={handleAuthentication} />
       )}
@@ -121,40 +118,6 @@ function App() {
           onLogout={handleLogout}
           onNavigateToDashboard={() => setCurrentPage('filelist')}
         />
-      )}
-
-      {currentPage === 'voicedemo' && (
-        <div className="min-h-screen bg-gray-50 p-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="mb-6 flex items-center justify-between">
-              <h1 className="text-3xl font-bold">Voice Commands Demo</h1>
-              <Button
-                onClick={() => setCurrentPage('landing')}
-                variant="outline"
-              >
-                ← Back to Landing
-              </Button>
-            </div>
-            <VoiceCommandDemo />
-          </div>
-        </div>
-      )}
-
-      {currentPage === 'voicetest' && (
-        <div className="min-h-screen bg-gray-50 p-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="mb-6 flex items-center justify-between">
-              <h1 className="text-3xl font-bold">Voice Commands Test</h1>
-              <Button
-                onClick={() => setCurrentPage('landing')}
-                variant="outline"
-              >
-                ← Back to Landing
-              </Button>
-            </div>
-            <VoiceTestPage />
-          </div>
-        </div>
       )}
 
       {currentPage === 'sharedfile' && shareId && (

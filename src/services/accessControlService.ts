@@ -5,7 +5,7 @@
 
 import { isValidSuiAddress } from '@mysten/sui/utils';
 
-const API_BASE_URL = 'https://backend-96n2.onrender.com';
+const API_BASE_URL = 'http://localhost:3000';
 
 export interface AccessControlRule {
   conditionType: 'email' | 'wallet' | 'time' | 'hybrid';

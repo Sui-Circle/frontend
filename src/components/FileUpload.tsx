@@ -1,10 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSealEncryption } from '../hooks/useSealEncryption';
+import { useWalletUploadEligibility } from '../hooks/useWalletUploadEligibility';
 import { fileService} from '../services/fileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Shield, X, FileIcon, Upload } from 'lucide-react';
-import { VoiceCommandButton } from '@/components/voice/VoiceCommandButton';
+import { Loader2, Shield, X, FileIcon, Upload, Wallet } from 'lucide-react';
+import WalletAuthButton from './WalletAuthButton';
 import { toast } from 'sonner';
 
 interface FileUploadProps {
@@ -51,6 +52,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   // Encryption is always enabled - no user toggle needed
   const { isAuthenticated, token, useTestMode } = useAuth();
   const { state: encryptionState, encryptFile } = useSealEncryption();
+  const { isEligible, isLoading: isEligibilityLoading, reason } = useWalletUploadEligibility(0.01);
 
   // Reference to the file input for voice commands
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,9 +136,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const uploadSingleFile = async (attachedFile: AttachedFile): Promise<UploadResult> => {
     console.log('🚀 uploadSingleFile called for:', attachedFile.name);
 
-    // Check authentication for non-test mode
-    if (!useTestMode && !isAuthenticated) {
-      throw new Error('Please log in to upload files');
+    // Check authentication and wallet eligibility for non-test mode
+    if (!useTestMode) {
+      if (!isAuthenticated) {
+        throw new Error('Please connect your wallet to upload files');
+      }
+      
+      if (!isEligible && reason === 'insufficient_balance') {
+        throw new Error('Your wallet has insufficient balance to upload files');
+      }
     }
 
     console.log('📁 Uploading file:', attachedFile.name, attachedFile.size);
@@ -297,12 +305,34 @@ const FileUpload: React.FC<FileUploadProps> = ({
         </div>
 
         {/* Authentication Status */}
-        {!useTestMode && !isAuthenticated && (
-          <Alert className="mb-6 border-amber-200 bg-amber-50">
-            <AlertDescription className="text-amber-800">
-              🔐 Please sign in to upload files securely.
-            </AlertDescription>
-          </Alert>
+        {!useTestMode && (
+          <div className="mb-6">
+            {!isAuthenticated && (
+              <>
+                <Alert className="mb-4 border-amber-200 bg-amber-50">
+                  <AlertDescription className="text-amber-800">
+                    🔐 Please connect your wallet to upload files securely.
+                  </AlertDescription>
+                </Alert>
+                <div className="flex justify-center">
+                  <WalletAuthButton 
+                    variant="default" 
+                    size="lg"
+                    className="px-8 py-2"
+                  />
+                </div>
+              </>
+            )}
+            
+            {isAuthenticated && !isEligible && reason === 'insufficient_balance' && (
+              <Alert className="mb-4 border-amber-200 bg-amber-50">
+                <AlertDescription className="text-amber-800 flex items-center gap-2">
+                  <Wallet className="w-4 h-4" />
+                  Your wallet has insufficient balance to upload files. Please add more SUI to your wallet.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
         )}
 
         {/* Encryption Status */}
@@ -462,17 +492,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           </div>
         )}
 
-        {/* Voice Commands */}
-        <div className="mt-8 text-center">
-          <VoiceCommandButton
-            onFileAttachCommand={handleVoiceFileSelect}
-            disabled={globalUploading}
-            className="mx-auto"
-          />
-          <p className="text-sm text-gray-500 mt-2">
-            Try saying: "upload a file" or "attach file"
-          </p>
-        </div>
+       
       </div>
     </div>
   );

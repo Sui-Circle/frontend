@@ -5,6 +5,7 @@ import AccessControlStatus from './AccessControlStatus';
 import AccessControlConfig from './AccessControlConfig';
 import { accessControlService } from '../services/accessControlService';
 import { toast } from 'sonner';
+import { Inbox } from 'lucide-react';
 
 
 
@@ -81,10 +82,7 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
 
       if (result.success) {
         setFiles(result.data.files);
-
-        if (result.data.files.length === 0) {
-          setError('No files uploaded yet. Upload a file to see it here.');
-        }
+        // Do not set error for empty list; handled by empty state UI
       } else {
         setError(result.message || 'Failed to fetch files from server.');
         setFiles([]);
@@ -100,7 +98,11 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
 
   const downloadFile = async (cid: string, filename: string) => {
     try {
-      const result = await fileService.downloadFile(cid, filename, useTestMode);
+      // If file is encrypted and we have the secretKey from listing, pass it for client-side decryption
+      const fileMeta = files.find(f => f.cid === cid);
+      const secretKey = fileMeta?.encryptionKeys?.secretKey;
+      const contentType = fileMeta?.contentType;
+      const result = await fileService.downloadFile(cid, filename, token, useTestMode, { secretKey, contentType });
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to download file');
@@ -222,7 +224,14 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
     <div className="file-list-container">
       {files.length === 0 ? (
         <div className="no-files">
-          <p className="text-gray-500 text-center">No files uploaded yet.</p>
+          <div className="flex flex-col items-center justify-center">
+            <Inbox className="h-16 w-16 text-gray-300" />
+            <h3 className="mt-4 text-lg font-semibold text-gray-700">No files yet</h3>
+            <p className="mt-2 text-gray-500">Upload a file to see it here.</p>
+            <button onClick={fetchFiles} className="retry-button mt-4">
+              Refresh
+            </button>
+          </div>
         </div>
       ) : (
         <div className="files-section">
@@ -309,9 +318,14 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
           margin: 0 auto;
         }
 
-        .loading, .error, .no-files {
+        .loading, .error {
           text-align: center;
           padding: 40px;
+        }
+
+        .no-files {
+          text-align: center;
+          padding: 60px 40px;
         }
 
         .error {
@@ -319,17 +333,19 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
         }
 
         .retry-button {
-          background: #dc3545;
+          background: #3b82f6;
           color: white;
           border: none;
-          padding: 8px 16px;
-          border-radius: 4px;
+          padding: 10px 20px;
+          border-radius: 8px;
           cursor: pointer;
           margin-top: 10px;
+          font-weight: 500;
+          transition: background-color 0.2s ease;
         }
 
         .retry-button:hover {
-          background: #c82333;
+          background: #2563eb;
         }
 
         .files-section {

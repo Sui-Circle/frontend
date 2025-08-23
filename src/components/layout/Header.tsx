@@ -3,7 +3,7 @@ import { Play } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import WalletDisplay from '@/components/WalletDisplay';
 import { Button } from '@/components/ui/button';
-import { ConnectButton } from '@mysten/dapp-kit';
+import WalletAuthButton from '@/components/WalletAuthButton';
 
 interface HeaderProps {
   className?: string;
@@ -56,18 +56,13 @@ export const Header: React.FC<HeaderProps> = ({
             Dashboard
           </Button>
         )}
+        
 
-        <ConnectButton />
-        {/* Show wallet display when authenticated, login button when not */}
-        {isAuthenticated ? (
+        
+        <WalletAuthButton />
+        {/* Show wallet display when authenticated */}
+        {isAuthenticated && (
           <WalletDisplay user={user} onLogout={onLogout} />
-        ) : (
-          <Button
-            onClick={onNavigateToAuth}
-            className="bg-black hover:bg-gray-800 text-white"
-          >
-            Sign In
-          </Button>
         )}
       </div>
     </header>
