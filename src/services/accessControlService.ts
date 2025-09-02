@@ -111,15 +111,15 @@ export interface ParsedBulkData {
 
 class AccessControlService {
   /**
-   * Get authorization headers
+   * Get authorization headers for wallet-based auth
    */
-  private getAuthHeaders(token: string | null): Record<string, string> {
+  private getWalletHeaders(walletAddress: string | null): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    if (walletAddress) {
+      headers['X-Wallet-Address'] = walletAddress;
     }
 
     return headers;
@@ -129,16 +129,16 @@ class AccessControlService {
    * Create access control rules for a file
    */
   async createAccessControl(
-    token: string | null,
+    walletAddress: string | null,
     request: CreateAccessControlRequest,
     useTestMode: boolean = false
   ): Promise<AccessControlResponse> {
     try {
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/access-control/test` 
-        : `${API_BASE_URL}/access-control`;
+        : `${API_BASE_URL}/access-control-wallet`;
 
-      const headers = this.getAuthHeaders(token);
+      const headers = this.getWalletHeaders(walletAddress);
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -172,16 +172,16 @@ class AccessControlService {
    * Update access control rules for a file
    */
   async updateAccessControl(
-    token: string | null,
+    walletAddress: string | null,
     request: UpdateAccessControlRequest,
     useTestMode: boolean = false
   ): Promise<AccessControlResponse> {
     try {
       const endpoint = useTestMode
         ? `${API_BASE_URL}/access-control/test`
-        : `${API_BASE_URL}/access-control`;
+        : `${API_BASE_URL}/access-control-wallet`;
 
-      const headers = this.getAuthHeaders(token);
+      const headers = this.getWalletHeaders(walletAddress);
 
       const response = await fetch(endpoint, {
         method: 'PUT',
@@ -215,16 +215,16 @@ class AccessControlService {
    * Validate access to a file
    */
   async validateAccess(
-    token: string | null,
+    walletAddress: string | null,
     request: ValidateAccessRequest,
     useTestMode: boolean = false
   ): Promise<AccessControlResponse> {
     try {
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/access-control/validate-test` 
-        : `${API_BASE_URL}/access-control/validate`;
+        : `${API_BASE_URL}/access-control-validate-wallet`;
 
-      const headers = this.getAuthHeaders(token);
+      const headers = this.getWalletHeaders(walletAddress);
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -260,16 +260,16 @@ class AccessControlService {
    * Get access control information for a file
    */
   async getAccessControlInfo(
-    token: string | null,
+    walletAddress: string | null,
     fileCid: string,
     useTestMode: boolean = false
   ): Promise<AccessControlInfoResponse> {
     try {
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/access-control/${fileCid}/test` 
-        : `${API_BASE_URL}/access-control/${fileCid}`;
+        : `${API_BASE_URL}/access-control/${fileCid}-wallet`;
 
-      const headers = this.getAuthHeaders(token);
+      const headers = this.getWalletHeaders(walletAddress);
 
       const response = await fetch(endpoint, {
         method: 'GET',
@@ -300,16 +300,16 @@ class AccessControlService {
    * Check if current user can access a file
    */
   async checkAccess(
-    token: string | null,
+    walletAddress: string | null,
     fileCid: string,
     useTestMode: boolean = false
   ): Promise<AccessControlResponse> {
     try {
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/access-control/validate-test` 
-        : `${API_BASE_URL}/access-control/${fileCid}/check`;
+        : `${API_BASE_URL}/access-control/${fileCid}/check-wallet`;
 
-      const headers = this.getAuthHeaders(token);
+      const headers = this.getWalletHeaders(walletAddress);
 
       const response = await fetch(endpoint, {
         method: useTestMode ? 'POST' : 'GET',
@@ -429,16 +429,16 @@ class AccessControlService {
    * Generate a shareable link for a file
    */
   async generateShareLink(
-    token: string | null,
+    walletAddress: string | null,
     request: ShareLinkRequest,
     useTestMode: boolean = false
   ): Promise<ShareLinkResponse> {
     try {
       const endpoint = useTestMode
         ? `${API_BASE_URL}/access-control/share-link-test`
-        : `${API_BASE_URL}/access-control/share-link`;
+        : `${API_BASE_URL}/access-control/share-link-wallet`;
 
-      const headers = this.getAuthHeaders(token);
+      const headers = this.getWalletHeaders(walletAddress);
 
       const response = await fetch(endpoint, {
         method: 'POST',

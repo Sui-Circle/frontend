@@ -21,7 +21,7 @@ const AccessControlStatus: React.FC<AccessControlStatusProps> = ({
   className = '',
   showDetails = false
 }) => {
-  const { token, useTestMode } = useAuth();
+  const { user, useTestMode } = useAuth();
   const [accessControlInfo, setAccessControlInfo] = useState<AccessControlInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ const AccessControlStatus: React.FC<AccessControlStatusProps> = ({
     setError(null);
     
     try {
-      const result = await accessControlService.getAccessControlInfo(token, fileCid, useTestMode);
+      const result = await accessControlService.getAccessControlInfo(user?.address || null, fileCid, useTestMode);
       
       if (result.success && result.data) {
         setAccessControlInfo(result.data);

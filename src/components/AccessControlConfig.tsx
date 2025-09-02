@@ -27,7 +27,7 @@ const AccessControlConfig: React.FC<AccessControlConfigProps> = ({
   onAccessControlUpdated,
   onError
 }) => {
-  const { token, useTestMode } = useAuth();
+  const { user, useTestMode } = useAuth();
   
   // Form state
   const [conditionType, setConditionType] = useState<'email' | 'wallet' | 'time' | 'hybrid'>('email');
@@ -64,7 +64,7 @@ const AccessControlConfig: React.FC<AccessControlConfigProps> = ({
   const loadExistingAccessControl = async () => {
     setLoadingExisting(true);
     try {
-      const result = await accessControlService.getAccessControlInfo(token, fileCid, useTestMode);
+      const result = await accessControlService.getAccessControlInfo(user?.address || null, fileCid, useTestMode);
       if (result.success && result.data) {
         setExistingAccessControl(result.data);
         // Populate form with existing data
@@ -152,8 +152,8 @@ const AccessControlConfig: React.FC<AccessControlConfigProps> = ({
       // Create or update access control
       const request = { fileCid, accessRule };
       const result = existingAccessControl
-        ? await accessControlService.updateAccessControl(token, request, useTestMode)
-        : await accessControlService.createAccessControl(token, request, useTestMode);
+        ? await accessControlService.updateAccessControl(user?.address || null, request, useTestMode)
+        : await accessControlService.createAccessControl(user?.address || null, request, useTestMode);
 
       if (!result.success) {
         throw new Error(result.message);
@@ -305,7 +305,7 @@ const AccessControlConfig: React.FC<AccessControlConfigProps> = ({
 
     try {
       const result = await accessControlService.generateShareLink(
-        token,
+        user?.address || null,
         {
           fileCid,
           expirationTime: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days from now

@@ -12,7 +12,7 @@ interface AccessControlQRCodeProps {
 }
 
 const AccessControlQRCode: React.FC<AccessControlQRCodeProps> = ({ fileCid, fileName }) => {
-  const { token, useTestMode } = useAuth();
+  const { user, useTestMode } = useAuth();
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [shareLink, setShareLink] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ const AccessControlQRCode: React.FC<AccessControlQRCodeProps> = ({ fileCid, file
     setError(null);
     try {
       const request: ShareLinkRequest = { fileCid };
-      const result = await accessControlService.generateShareLink(token, request, useTestMode);
+      const result = await accessControlService.generateShareLink(user?.address || null, request, useTestMode);
       if (result.success && result.data) {
         setShareLink(result.data.shareLink);
         generateQRCode(result.data.shareLink);
