@@ -1,150 +1,110 @@
 import React, { useState } from 'react';
+import { Wallet, TestTube } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import ZkLoginAuth from '@/components/ZkLoginAuth';
-import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 interface AuthPageProps {
-  onAuthenticate: (email?: string) => void;
+  onAuthenticate: () => void;
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onAuthenticate }) => {
   const [email, setEmail] = useState('');
   const { login, useTestMode, setUseTestMode } = useAuth();
 
-  const handleZkLoginSuccess = (authData: { token: string; user: any }) => {
-    // Extract token and user data from the zkLogin response
-    console.log('zkLogin success:', authData);
-    login(authData.token, authData.user);
-    onAuthenticate(authData.user.email);
-  };
-
-  const handleZkLoginError = (error: string) => {
-    console.error('zkLogin authentication failed:', error);
-    // You could show a toast or error message here
-  };
-
   const handleTestModeAuth = () => {
     // Simulate authentication for test mode
+    const testUser = {
+      address: `0x${Math.random().toString(16).slice(2, 42)}`,
+      label: email || 'Test User'
+    };
+    login(testUser);
     onAuthenticate();
   };
 
   const handleEmailAuth = (e: React.FormEvent) => {
     e.preventDefault();
     if (email.trim()) {
-      onAuthenticate(email);
+      handleTestModeAuth();
     }
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex flex-col items-center justify-center px-4 py-16">
-        <div className="w-full max-w-sm">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-black rounded-full flex items-center justify-center mb-4">
+              <Wallet className="w-6 h-6 text-white" />
             </div>
-          </div>
-
-          {/* Mode Toggle */}
-          <div className="flex justify-center mb-8">
-            <div className="flex bg-gray-100 rounded-lg p-1">
-             
-                
-              <button
-                onClick={() => setUseTestMode(false)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  !useTestMode
-                    ? 'bg-white text-black shadow-sm'
-                    : 'text-gray-600 hover:text-black'
-                }`}
-              >
-                zkLogin
-              </button>
-            </div>
-          </div>
-
-          {useTestMode ? (
-            <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm">
-              {/* Title */}
-              <h1 className="text-2xl font-semibold text-gray-900 text-center mb-6">
-                Sign in to Sui Send
-              </h1>
-
-              <p className="text-sm text-gray-600 text-center mb-8">
-                It takes 5 seconds to create an account
+            <CardTitle className="text-2xl font-bold">Connect Wallet</CardTitle>
+            <CardDescription>
+              Choose how you want to authenticate
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Wallet Connection */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-4">
+                Connect your Sui wallet to get started
               </p>
+              <p className="text-xs text-gray-500">
+                Your wallet connection is handled automatically by the ConnectButton in the header
+              </p>
+            </div>
 
-              {/* Test Mode Auth Button */}
-              <Button
-                onClick={handleTestModeAuth}
-                className="w-full bg-black hover:bg-gray-800 text-white py-3 rounded-md font-medium mb-4"
-              >
-                Continue with Test Mode
-              </Button>
-
-              {/* Divider */}
-              <div className="flex items-center gap-4 mb-4">
-                <div className="flex-1 h-px bg-gray-200"></div>
-                <span className="text-gray-500 text-sm">OR</span>
-                <div className="flex-1 h-px bg-gray-200"></div>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
               </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">Or</span>
+              </div>
+            </div>
 
-              {/* Email Form */}
-              <form onSubmit={handleEmailAuth}>
+            {/* Test Mode */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <TestTube className="w-4 h-4" />
+                <span>Test Mode (No wallet required)</span>
+              </div>
+              
+              <form onSubmit={handleEmailAuth} className="space-y-3">
                 <Input
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="Enter email for test mode"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full mb-4 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full"
                 />
                 <Button
                   type="submit"
-                  className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-md font-medium"
+                  className="w-full bg-gray-800 hover:bg-gray-900 text-white"
+                  disabled={!email.trim()}
                 >
-                  Continue with Email
+                  Continue in Test Mode
                 </Button>
               </form>
             </div>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm">
-              {/* Title */}
-              <h1 className="text-2xl font-semibold text-gray-900 text-center mb-6">
-                Sign in to Sui Send
-              </h1>
 
-              <p className="text-sm text-gray-600 text-center mb-8">
-                It takes 5 seconds to create an account
-              </p>
-
-              {/* zkLogin Component */}
-              <ZkLoginAuth
-                onAuthSuccess={handleZkLoginSuccess}
-                onAuthError={handleZkLoginError}
-              />
+            {/* Test Mode Toggle */}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">
+                {useTestMode ? 'Currently in test mode' : 'Currently in wallet mode'}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUseTestMode(!useTestMode)}
+                className="text-xs"
+              >
+                Switch to {useTestMode ? 'Wallet' : 'Test'} Mode
+              </Button>
             </div>
-          )}
-
-          {/* Terms */}
-          <div className="text-center text-xs text-gray-500 mt-6 space-y-1">
-            <p>
-              By creating an account, you agree to the{' '}
-              <a href="#" className="text-blue-600 hover:underline">
-                Terms of Service
-              </a>
-              .
-            </p>
-            <p>
-              For questions about GitHub's Privacy Statement, please{' '}
-              <a href="#" className="text-blue-600 hover:underline">
-                contact GitHub
-              </a>
-              .
-            </p>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

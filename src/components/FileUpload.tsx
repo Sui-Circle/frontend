@@ -49,7 +49,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [globalUploading, setGlobalUploading] = useState(false);
 
   // Encryption is always enabled - no user toggle needed
-  const { isAuthenticated, token, useTestMode } = useAuth();
+  const { isAuthenticated, useTestMode, user } = useAuth();
   const { state: encryptionState, encryptFile } = useSealEncryption();
 
   // Reference to the file input for voice commands
@@ -72,24 +72,24 @@ const FileUpload: React.FC<FileUploadProps> = ({
   }, [initialFiles]);
 
   // Voice command handler for file selection
-  const handleVoiceFileSelect = useCallback(() => {
-    console.log('Voice command: Select file triggered');
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-      toast.success('Voice command: Opening file browser');
-    }
-  }, []);
+  // const handleVoiceFileSelect = useCallback(() => {
+  //   console.log('Voice command: Select file triggered');
+  //   if (fileInputRef.current) {
+  //     fileInputRef.current.click();
+  //     toast.success('Voice command: Opening file browser');
+  //   }
+  // }, []);
 
   // Voice command handler for upload
-  const handleVoiceUpload = useCallback(() => {
-    console.log('Voice command: Upload file triggered');
-    if (attachedFiles.length > 0) {
-      handleUploadAll();
-      toast.success('Voice command: Starting upload');
-    } else {
-      toast.error('No files attached. Please attach files first.');
-    }
-  }, [attachedFiles]);
+  // const handleVoiceUpload = useCallback(() => {
+  //   console.log('Voice command: Upload file triggered');
+  //   if (attachedFiles.length > 0) {
+  //     handleUploadAll();
+  //     toast.success('Voice command: Starting upload');
+  //   } else {
+  //     toast.error('No files attached. Please attach files first.');
+  //   }
+  // }, [attachedFiles]);
 
   // Debug encryption state
   console.log('🔐 Current encryption state:', encryptionState);
@@ -198,7 +198,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       // Use the file service for upload
       const result = await fileService.uploadFile(
         attachedFile.file, // Pass original file for metadata
-        token,
+        user?.address || null, // Pass wallet address for authentication
         useTestMode,
         encryptionData
       );
@@ -299,12 +299,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       {/* Main Content */}
       <div className="">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-black mb-4">
-            Send it. Own it. On Chain
-          </h1>
-          <p className="text-gray-600">Powered by Sui</p>
-        </div>
 
         {/* Authentication Status */}
         {!useTestMode && !isAuthenticated && (
@@ -473,7 +467,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         )}
 
         {/* Voice Commands */}
-        <div className="mt-8 text-center">
+        {/* <div className="mt-8 text-center">
           <VoiceCommandButton
             onFileAttachCommand={handleVoiceFileSelect}
             disabled={globalUploading}
@@ -482,7 +476,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <p className="text-sm text-gray-500 mt-2">
             Try saying: "upload a file" or "attach file"
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

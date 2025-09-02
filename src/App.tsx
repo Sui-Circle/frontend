@@ -15,12 +15,45 @@ import { Button } from '@/components/ui/button';
 type AppState = 'landing' | 'auth' | 'filelist' | 'transfer' | 'success' | 'voicedemo' | 'voicetest' | 'sharedfile';
 
 function App() {
+  console.log('App: Component rendering');
+  
   const [currentPage, setCurrentPage] = useState<AppState>('landing');
   const [shareId, setShareId] = useState<string | null>(null);
-  const { isAuthenticated, user, logout } = useAuth();
+  
+  let authContext;
+  try {
+    authContext = useAuth();
+    console.log('App: Auth context loaded successfully', authContext);
+  } catch (error) {
+    console.error('App: Failed to load auth context', error);
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">
+            Authentication Error
+          </h1>
+          <p className="text-gray-600 mb-4">
+            Failed to initialize authentication. Please check the console for details.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const { isAuthenticated, user, logout } = authContext;
 
   // Check for share link in URL on component mount
   useEffect(() => {
+    console.log('App: Checking for share link');
     const checkForShareLink = () => {
       const path = window.location.pathname;
       const shareMatch = path.match(/^\/share\/(.+)$/);
@@ -38,6 +71,7 @@ function App() {
 
   // Check authentication status and redirect accordingly
   useEffect(() => {
+    console.log('App: Checking authentication status', { isAuthenticated, currentPage });
     if (isAuthenticated && currentPage === 'auth') {
       setCurrentPage('filelist');
       toast.success('Authentication successful!');
@@ -51,7 +85,7 @@ function App() {
   };
 
   const handleAuthentication = () => {
-    // Authentication is now handled by AuthContext
+    // Authentication is now handled by wallet connection
     // This function just triggers the page transition
     setCurrentPage('filelist');
   };
@@ -84,6 +118,8 @@ function App() {
     toast.success('Files uploaded successfully!');
   };
 
+  console.log('App: Rendering page', { currentPage, isAuthenticated, user });
+
   return (
     <div className="min-h-screen">
       {currentPage === 'landing' && (
@@ -110,7 +146,6 @@ function App() {
           isAuthenticated={isAuthenticated}
           user={user}
           onLogout={handleLogout}
-          onNavigateToDashboard={() => setCurrentPage('filelist')}
         />
       )}
 

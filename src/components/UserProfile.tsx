@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AuthUser } from '../services/authService';
+import type { AuthUser } from '../contexts/AuthContext';
 import {
   GitHubIcon,
   GoogleIcon,

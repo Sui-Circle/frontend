@@ -1,8 +1,14 @@
 import React from 'react';
 import { Wallet as WalletIcon, Copy } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
-import { Button } from '@/components/ui/button';
-import { Transaction } from '@/types';
+// import { Button } from '@/components/ui/button';
+
+interface Transaction {
+  id: string;
+  type: 'sent' | 'received';
+  description: string;
+  timestamp: Date;
+}
 
 interface WalletPageProps {
   walletAddress?: string;

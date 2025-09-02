@@ -120,7 +120,7 @@ class FileService {
    */
   async uploadFile(
     file: File,
-    token: string | null,
+    walletAddress: string | null,
     useTestMode: boolean = false,
     encryptionData?: {
       encryptedFile: File;
@@ -140,8 +140,8 @@ class FileService {
         : `${API_BASE_URL}/file/upload`;
 
       const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      if (walletAddress) {
+        headers['X-Wallet-Address'] = walletAddress;
       }
 
       const response = await fetch(endpoint, {

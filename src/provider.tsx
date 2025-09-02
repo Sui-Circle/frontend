@@ -15,13 +15,20 @@ const queryClient = new QueryClient({
 });
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <SuiClientProvider networks={networkConfig} defaultNetwork={network}>
-        <WalletProvider autoConnect={false}>
+  console.log('Providers: Initializing with network config', { networkConfig, network });
+  
+  try {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SuiClientProvider networks={networkConfig} defaultNetwork={network}>
+          <WalletProvider autoConnect={false}>
             {children}
-        </WalletProvider>
-      </SuiClientProvider>
-    </QueryClientProvider>
-  );
+          </WalletProvider>
+        </SuiClientProvider>
+      </QueryClientProvider>
+    );
+  } catch (error) {
+    console.error('Providers: Error initializing providers', error);
+    return <div>Error initializing providers: {error instanceof Error ? error.message : 'Unknown error'}</div>;
+  }
 }

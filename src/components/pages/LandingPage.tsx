@@ -27,7 +27,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   user,
   onLogout
 }) => {
-  console.log('🏠 LandingPage component rendered');
+  console.log('🏠 LandingPage component rendered', { isAuthenticated, user });
+  
   const [isDragOver, setIsDragOver] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -167,7 +168,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </Button>
 
                 {/* Simple Voice Assistant */}
-                {isSupported && (
+                {/* {isSupported && (
                   <div className="flex flex-col items-center gap-2 mt-2">
                     <SimpleVoiceAssistant
                       onFileAttachCommand={handleVoiceFileAttach}
@@ -183,7 +184,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       </Button>
                     )}
                   </div>
-                )}
+                )} */}
 
                 <p className="text-gray-600 text-sm">
                   {isSupported
