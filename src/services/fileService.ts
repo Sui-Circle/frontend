@@ -64,10 +64,13 @@ class FileService {
   /**
    * Fetch user's files from backend
    */
-  async getUserFiles(token: string | null, useTestMode: boolean = false): Promise<FilesResponse> {
+  async getUserFiles(walletAddress: string | null, useTestMode: boolean = false): Promise<FilesResponse> {
     try {
-      const endpoint = useTestMode ? `${API_BASE_URL}/files-test` : `${API_BASE_URL}/files`;
-      const headers = this.getAuthHeaders(token);
+      const endpoint = useTestMode ? `${API_BASE_URL}/files-test` : `${API_BASE_URL}/files-wallet`;
+      const headers: Record<string, string> = {};
+      if (walletAddress) {
+        headers['X-Wallet-Address'] = walletAddress;
+      }
 
       const response = await fetch(endpoint, {
         method: 'GET',
@@ -134,6 +137,18 @@ class FileService {
       const formData = new FormData();
       const fileToUpload = encryptionData ? encryptionData.encryptedFile : file;
       formData.append('file', fileToUpload);
+
+      // Debug: Log the endpoint selection
+      console.log('🔍 FileService debug:', {
+        useTestMode,
+        walletAddress,
+        hasWalletAddress: !!walletAddress,
+        selectedEndpoint: useTestMode 
+          ? 'upload-test' 
+          : walletAddress 
+            ? 'upload-wallet'
+            : 'upload'
+      });
 
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/file/upload-test` 
@@ -220,17 +235,20 @@ class FileService {
   /**
    * Delete all user files from backend
    */
-  async clearUserFiles(token: string | null, useTestMode: boolean = false): Promise<DeleteResponse> {
+  async clearUserFiles(walletAddress: string | null, useTestMode: boolean = false): Promise<DeleteResponse> {
     try {
-      if (!token && !useTestMode) {
+      if (!walletAddress && !useTestMode) {
         throw new Error('Authentication required to delete files');
       }
 
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/files-test` 
-        : `${API_BASE_URL}/files`;
+        : `${API_BASE_URL}/files-wallet`;
 
-      const headers = this.getAuthHeaders(token);
+      const headers: Record<string, string> = {};
+      if (walletAddress) {
+        headers['X-Wallet-Address'] = walletAddress;
+      }
 
       const response = await fetch(endpoint, {
         method: 'DELETE',

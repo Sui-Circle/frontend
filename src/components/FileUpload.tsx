@@ -195,6 +195,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
         encryptionKeys
       } : undefined;
 
+      // Debug: Log the user object and wallet address
+      console.log('🔍 Upload debug:', {
+        user,
+        walletAddress: user?.address,
+        useTestMode,
+        hasEncryptionData: !!encryptionData
+      });
+
       // Use the file service for upload
       const result = await fileService.uploadFile(
         attachedFile.file, // Pass original file for metadata
@@ -222,6 +230,20 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const handleUploadAll = async () => {
     if (attachedFiles.length === 0) {
       toast.error('No files to upload');
+      return;
+    }
+
+    // Debug: Check authentication status
+    console.log('🔍 Upload authentication check:', {
+      isAuthenticated,
+      user,
+      hasWalletAddress: !!user?.address,
+      useTestMode
+    });
+
+    // Check if we have proper authentication
+    if (!useTestMode && !user?.address) {
+      toast.error('Please connect your wallet to upload files');
       return;
     }
 

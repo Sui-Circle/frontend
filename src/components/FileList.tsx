@@ -63,7 +63,7 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileMetadata | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const { useTestMode, token, isAuthenticated } = useAuth();
+  const { useTestMode, user, isAuthenticated } = useAuth();
 
   const fetchFiles = async () => {
     setLoading(true);
@@ -78,7 +78,7 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
       }
 
       // Fetch files from backend using the file service
-      const result = await fileService.getUserFiles(token, useTestMode);
+      const result = await fileService.getUserFiles(user?.address || null, useTestMode);
 
       if (result.success) {
         setFiles(result.data.files);
@@ -114,7 +114,7 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
   const generateQuickShareLink = async (cid: string, filename: string) => {
     try {
       const result = await accessControlService.generateShareLink(
-        token,
+        user?.address || null,
         {
           fileCid: cid,
           expirationTime: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days from now
@@ -169,7 +169,7 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
       }
 
       setLoading(true);
-      const result = await fileService.clearUserFiles(token, useTestMode);
+      const result = await fileService.clearUserFiles(user?.address || null, useTestMode);
 
       if (result.success) {
         setFiles([]);
