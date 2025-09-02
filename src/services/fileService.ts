@@ -137,7 +137,9 @@ class FileService {
 
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/file/upload-test` 
-        : `${API_BASE_URL}/file/upload`;
+        : walletAddress 
+          ? `${API_BASE_URL}/file/upload-wallet`
+          : `${API_BASE_URL}/file/upload`;
 
       const headers: Record<string, string> = {};
       if (walletAddress) {
