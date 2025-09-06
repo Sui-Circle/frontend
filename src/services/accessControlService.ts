@@ -136,7 +136,7 @@ class AccessControlService {
     try {
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/access-control/test` 
-        : `${API_BASE_URL}/access-control-wallet`;
+        : `${API_BASE_URL}/access-control/wallet`;
 
       const headers = this.getWalletHeaders(walletAddress);
 
@@ -177,9 +177,9 @@ class AccessControlService {
     useTestMode: boolean = false
   ): Promise<AccessControlResponse> {
     try {
-      const endpoint = useTestMode
-        ? `${API_BASE_URL}/access-control/test`
-        : `${API_BASE_URL}/access-control-wallet`;
+      const endpoint = useTestMode 
+        ? `${API_BASE_URL}/access-control/test` 
+        : `${API_BASE_URL}/access-control/wallet`;
 
       const headers = this.getWalletHeaders(walletAddress);
 
