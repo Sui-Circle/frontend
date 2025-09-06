@@ -2,10 +2,11 @@
  * Authentication service for zkLogin integration
  */
 
-const API_BASE_URL = 'http://localhost:3000';
-
+// const API_BASE_URL = 'https://backend-96n2.onrender.com';
+const API_BASE_URL ="http://localhost:3000";
 export interface AuthUser {
-  zkLoginAddress: string;
+  zkLoginAddress?: string;
+  walletAddress?: string;
   provider: string;
   email?: string;
   name?: string;
@@ -116,7 +117,9 @@ class AuthService {
       }
 
       // Store user data with sensitive zkLogin parameters in sessionStorage for security
-      this.storeUserData(this.user);
+      if (this.user) {
+        this.storeUserData(this.user);
+      }
       
       return data;
     } catch (error) {
@@ -148,7 +151,9 @@ class AuthService {
       
       const data = await response.json();
       this.user = data.data.user;
-      this.storeUserData(this.user);
+      if (this.user) {
+        this.storeUserData(this.user);
+      }
       
       return data;
     } catch (error) {

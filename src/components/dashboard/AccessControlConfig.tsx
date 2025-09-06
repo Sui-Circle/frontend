@@ -9,9 +9,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Shield, Clock, Mail, Wallet, Plus, X, Upload, FileText, AlertCircle, Share2, QrCode } from 'lucide-react';
+import { Loader2, Shield, Clock, Mail, Wallet, Plus, X, Upload, AlertCircle, Share2, QrCode } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import QRCodeGenerator from './QRCodeGenerator';
 
 interface AccessControlConfigProps {

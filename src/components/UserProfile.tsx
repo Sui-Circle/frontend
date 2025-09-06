@@ -99,7 +99,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .user-profile {
           background: white;
           border-radius: 8px;

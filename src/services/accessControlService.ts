@@ -543,7 +543,7 @@ class AccessControlService {
             if (!result.emails.includes(trimmedCell)) {
               result.emails.push(trimmedCell);
             }
-          } else if (this.isValidSuiAddress(trimmedCell)) {
+          } else if (isValidSuiAddress(trimmedCell)) {
             if (!result.addresses.includes(trimmedCell)) {
               result.addresses.push(trimmedCell);
             }

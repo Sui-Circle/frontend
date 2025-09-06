@@ -1,5 +1,16 @@
 // Voice diagnostics utility to help debug voice command issues
 
+// Define types for Web Speech API if not available in TypeScript DOM lib
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
 export interface VoiceDiagnostics {
   speechRecognitionSupported: boolean;
   speechSynthesisSupported: boolean;
@@ -123,7 +134,7 @@ export const testSpeechRecognition = (): Promise<string> => {
       }, 5000);
     };
     
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       clearTimeout(timeout);
       const result = event.results[0];
       if (result.isFinal) {
@@ -133,7 +144,7 @@ export const testSpeechRecognition = (): Promise<string> => {
       }
     };
     
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       clearTimeout(timeout);
       console.error('🎤 Test recognition error:', event.error);
       reject(new Error(`Recognition error: ${event.error}`));
