@@ -3,8 +3,8 @@ import { LandingPage } from '@/components/pages/LandingPage';
 import { AuthPage } from '@/components/pages/AuthPage';
 import { TransferPage } from '@/components/pages/TransferPage';
 import { SharedFileViewer } from '@/components/pages/SharedFileViewer';
-import { VoiceCommandDemo } from '@/components/voice/VoiceCommandDemo';
-import { VoiceTestPage } from '@/components/voice/VoiceTestPage';
+// import { VoiceCommandDemo } from '@/components/voice/VoiceCommandDemo';
+// import { VoiceTestPage } from '@/components/voice/VoiceTestPage';
 import { DashboardPage } from '@/components/dashboard/DashboardPage';
 import { useAuth } from '@/contexts/AuthContext';
 import type { TransferConfig } from '@/types';
@@ -184,7 +184,7 @@ function App() {
                 ← Back to Landing
               </Button>
             </div>
-            <VoiceCommandDemo />
+            {/* <VoiceCommandDemo /> */}
           </div>
         </div>
       )}
@@ -201,7 +201,7 @@ function App() {
                 ← Back to Landing
               </Button>
             </div>
-            <VoiceTestPage />
+            {/* <VoiceTestPage /> */}
           </div>
         </div>
       )}

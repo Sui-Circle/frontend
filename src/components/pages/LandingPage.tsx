@@ -3,7 +3,7 @@ import { Upload, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import { FileUpload } from '@/components/dashboard';
-import { SimpleVoiceAssistant } from '@/components/voice/SimpleVoiceAssistant';
+// import { SimpleVoiceAssistant } from '@/components/voice/SimpleVoiceAssistant';
 import { toast } from 'sonner';
 
 interface LandingPageProps {

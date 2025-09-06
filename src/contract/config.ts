@@ -1,4 +1,4 @@
-import {testnet} from "./contract_testnet";
+import { testnet } from './contract_testnet';
 
 interface ContractConfig {
     [key: string]: string;
