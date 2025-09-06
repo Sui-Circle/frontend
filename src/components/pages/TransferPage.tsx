@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Header } from '@/components/layout/Header';
 import { TransferConfig } from '@/types';
-import FileList from '@/components/FileList';
+import { FileList } from '@/components/dashboard';
 import { Plus, ArrowUpRight } from 'lucide-react';
 
 interface TransferPageProps {

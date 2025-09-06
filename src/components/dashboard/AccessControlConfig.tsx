@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { accessControlService, AccessControlRule, AccessControlInfo, ParsedBulkData } from '../services/accessControlService';
+import { useAuth } from '../../contexts/AuthContext';
+import { accessControlService, AccessControlRule, AccessControlInfo, ParsedBulkData } from '../../services/accessControlService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

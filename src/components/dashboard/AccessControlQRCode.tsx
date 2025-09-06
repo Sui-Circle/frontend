@@ -3,8 +3,8 @@ import QRCode from 'qrcode';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Download, Share2 } from 'lucide-react';
-import { accessControlService, ShareLinkRequest } from '../services/accessControlService';
-import { useAuth } from '../contexts/AuthContext';
+import { accessControlService, ShareLinkRequest } from '../../services/accessControlService';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface AccessControlQRCodeProps {
   fileCid: string;

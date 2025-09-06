@@ -1,23 +1,25 @@
 import { useState, useEffect } from 'react';
 import { LandingPage } from '@/components/pages/LandingPage';
 import { AuthPage } from '@/components/pages/AuthPage';
-import { FileListPage } from '@/components/pages/FileListPage';
 import { TransferPage } from '@/components/pages/TransferPage';
 import { SharedFileViewer } from '@/components/pages/SharedFileViewer';
 import { VoiceCommandDemo } from '@/components/voice/VoiceCommandDemo';
 import { VoiceTestPage } from '@/components/voice/VoiceTestPage';
+import { DashboardPage } from '@/components/dashboard/DashboardPage';
 import { useAuth } from '@/contexts/AuthContext';
 import type { TransferConfig } from '@/types';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { SimpleRouter, AppRoute } from '@/utils/router';
 
-type AppState = 'landing' | 'auth' | 'filelist' | 'transfer' | 'success' | 'voicedemo' | 'voicetest' | 'sharedfile';
+type AppState = AppRoute;
 
 function App() {
   console.log('App: Component rendering');
   
-  const [currentPage, setCurrentPage] = useState<AppState>('landing');
+  const router = SimpleRouter.getInstance();
+  const [currentPage, setCurrentPage] = useState<AppState>(router.getCurrentRoute());
   const [shareId, setShareId] = useState<string | null>(null);
   
   let authContext;
@@ -51,32 +53,43 @@ function App() {
 
   const { isAuthenticated, user, logout } = authContext;
 
-  // Check for share link in URL on component mount
+  // Set up router and handle URL changes
   useEffect(() => {
-    console.log('App: Checking for share link');
-    const checkForShareLink = () => {
-      const path = window.location.pathname;
-      const shareMatch = path.match(/^\/share\/(.+)$/);
-
-      if (shareMatch) {
-        const extractedShareId = shareMatch[1];
-        setShareId(extractedShareId);
-        setCurrentPage('sharedfile');
-        console.log('Share link detected:', extractedShareId);
+    console.log('App: Setting up router');
+    
+    // Handle initial route
+    const initialRoute = router.getCurrentRoute();
+    setCurrentPage(initialRoute);
+    
+    // Check for share ID in URL
+    const extractedShareId = router.getShareIdFromPath();
+    if (extractedShareId) {
+      setShareId(extractedShareId);
+    }
+    
+    // Listen for route changes
+    const unsubscribe = router.onRouteChange((route, params) => {
+      console.log('App: Route changed', { route, params });
+      setCurrentPage(route);
+      
+      if (route === 'sharedfile' && params?.shareId) {
+        setShareId(params.shareId);
+      } else if (route !== 'sharedfile') {
+        setShareId(null);
       }
-    };
+    });
 
-    checkForShareLink();
-  }, []);
+    return unsubscribe;
+  }, [router]);
 
   // Check authentication status and redirect accordingly
   useEffect(() => {
     console.log('App: Checking authentication status', { isAuthenticated, currentPage });
     if (isAuthenticated && currentPage === 'auth') {
-      setCurrentPage('filelist');
+      router.navigate('dashboard');
       toast.success('Authentication successful!');
     }
-  }, [isAuthenticated, currentPage]);
+  }, [isAuthenticated, currentPage, router]);
 
   const handleFileUpload = (files: FileList) => {
     // File upload is now handled by the FileUpload component directly
@@ -87,7 +100,7 @@ function App() {
   const handleAuthentication = () => {
     // Authentication is now handled by wallet connection
     // This function just triggers the page transition
-    setCurrentPage('filelist');
+    router.navigate('dashboard');
   };
 
   const handleTransfer = (config: TransferConfig) => {
@@ -96,25 +109,25 @@ function App() {
 
     // Reset state after successful transfer
     setTimeout(() => {
-      setCurrentPage('landing');
+      router.navigate('landing');
       // Don't logout automatically - let user stay authenticated
     }, 2000);
   };
 
   const handleLogout = () => {
     logout();
-    setCurrentPage('landing');
+    router.navigate('landing');
     toast.success('Logged out successfully');
   };
 
   const handleAddMoreFiles = () => {
     // Navigate to upload page instead of managing files in App state
-    setCurrentPage('landing');
+    router.navigate('landing');
   };
 
   const handleUploadSuccess = () => {
-    // Navigate to file list after successful upload
-    setCurrentPage('filelist');
+    // Navigate to dashboard after successful upload
+    router.navigate('dashboard');
     toast.success('Files uploaded successfully!');
   };
 
@@ -125,9 +138,9 @@ function App() {
       {currentPage === 'landing' && (
         <LandingPage
           onFileUpload={handleFileUpload}
-          onNavigateToAuth={() => setCurrentPage('auth')}
-          onNavigateToFileList={() => setCurrentPage('filelist')}
-          onNavigateToVoiceTest={() => setCurrentPage('voicetest')}
+          onNavigateToAuth={() => router.navigate('auth')}
+          onNavigateToFileList={() => router.navigate('dashboard')}
+          onNavigateToVoiceTest={() => router.navigate('voicetest')}
           onUploadSuccess={handleUploadSuccess}
           isAuthenticated={isAuthenticated}
           user={user}
@@ -139,13 +152,13 @@ function App() {
         <AuthPage onAuthenticate={handleAuthentication} />
       )}
 
-      {currentPage === 'filelist' && (
-        <FileListPage
-          onNavigateToTransfer={() => setCurrentPage('transfer')}
-          onNavigateToUpload={() => setCurrentPage('landing')}
-          isAuthenticated={isAuthenticated}
+      {currentPage === 'dashboard' && (
+        <DashboardPage
           user={user}
           onLogout={handleLogout}
+          onNavigateToUpload={() => router.navigate('landing')}
+          onNavigateToTransfer={() => router.navigate('transfer')}
+          onNavigateToDashboard={() => router.navigate('dashboard')}
         />
       )}
 
@@ -155,7 +168,7 @@ function App() {
           onTransfer={handleTransfer}
           user={user}
           onLogout={handleLogout}
-          onNavigateToDashboard={() => setCurrentPage('filelist')}
+          onNavigateToDashboard={() => router.navigate('dashboard')}
         />
       )}
 
@@ -165,7 +178,7 @@ function App() {
             <div className="mb-6 flex items-center justify-between">
               <h1 className="text-3xl font-bold">Voice Commands Demo</h1>
               <Button
-                onClick={() => setCurrentPage('landing')}
+                onClick={() => router.navigate('landing')}
                 variant="outline"
               >
                 ← Back to Landing
@@ -182,7 +195,7 @@ function App() {
             <div className="mb-6 flex items-center justify-between">
               <h1 className="text-3xl font-bold">Voice Commands Test</h1>
               <Button
-                onClick={() => setCurrentPage('landing')}
+                onClick={() => router.navigate('landing')}
                 variant="outline"
               >
                 ← Back to Landing
@@ -196,8 +209,8 @@ function App() {
       {currentPage === 'sharedfile' && shareId && (
         <SharedFileViewer
           shareId={shareId}
-          onNavigateToAuth={() => setCurrentPage('auth')}
-          onNavigateToLanding={() => setCurrentPage('landing')}
+          onNavigateToAuth={() => router.navigate('auth')}
+          onNavigateToLanding={() => router.navigate('landing')}
         />
       )}
 
