@@ -4,7 +4,7 @@ import { useSealEncryption } from '../../hooks/useSealEncryption';
 import { fileService, FileMetadata } from '../../services/fileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield, X, FileIcon, Upload } from 'lucide-react';
-import { VoiceCommandButton } from '@/components/voice/VoiceCommandButton';
+// import { VoiceCommandButton } from '@/components/voice/VoiceCommandButton';
 import { toast } from 'sonner';
 
 interface FileUploadProps {
