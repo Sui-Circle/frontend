@@ -137,11 +137,8 @@ function App() {
     <div className="min-h-screen">
       {currentPage === 'landing' && (
         <LandingPage
-          onFileUpload={handleFileUpload}
           onNavigateToAuth={() => router.navigate('auth')}
           onNavigateToFileList={() => router.navigate('dashboard')}
-          onNavigateToVoiceTest={() => router.navigate('voicetest')}
-          onUploadSuccess={handleUploadSuccess}
           isAuthenticated={isAuthenticated}
           user={user}
           onLogout={handleLogout}
