@@ -492,7 +492,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             const shareLink = `${window.location.origin}/allowlist/${allowlistId}`;
             setGeneratedShareLink(shareLink);
 
-            // Transition to success
+            // Stay on landing page and show success
             setTimeout(() => {
               setIsUploading(false);
               setUploadProgress(null);

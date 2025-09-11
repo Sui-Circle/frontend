@@ -31,7 +31,7 @@ export const SharedFileViewer: React.FC<SharedFileViewerProps> = ({
   onNavigateToAuth,
   onNavigateToLanding,
 }) => {
-  const { isAuthenticated, user, token } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shareData, setShareData] = useState<ShareLinkData | null>(null);
@@ -64,7 +64,7 @@ export const SharedFileViewer: React.FC<SharedFileViewerProps> = ({
         });
 
         // If user is authenticated, try to load the file
-        if (isAuthenticated && token) {
+        if (isAuthenticated) {
           await loadFileContent();
         }
       }
@@ -80,7 +80,7 @@ export const SharedFileViewer: React.FC<SharedFileViewerProps> = ({
     if (!shareData?.fileCid) return;
     try {
       // Use the shared file download service
-      const result = await fileService.downloadSharedFile(shareId, token);
+      const result = await fileService.downloadSharedFile(shareId, null);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to download file');
@@ -387,7 +387,7 @@ export const SharedFileViewer: React.FC<SharedFileViewerProps> = ({
               </p>
               {user && (
                 <p className="text-sm text-gray-600">
-                  Accessed by: {user.email || user.zkLoginAddress}
+                  Accessed by: {user.label || user.address}
                 </p>
               )}
               {(fileContent?.isEncrypted || shareData.isEncrypted) && (

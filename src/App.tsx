@@ -3,6 +3,7 @@ import { LandingPage } from '@/components/pages/LandingPage';
 import { AuthPage } from '@/components/pages/AuthPage';
 import { TransferPage } from '@/components/pages/TransferPage';
 import { SharedFileViewer } from '@/components/pages/SharedFileViewer';
+import { AllowlistViewer } from '@/components/pages/AllowlistViewer';
 // import { VoiceCommandDemo } from '@/components/voice/VoiceCommandDemo';
 // import { VoiceTestPage } from '@/components/voice/VoiceTestPage';
 import { DashboardPage } from '@/components/dashboard/DashboardPage';
@@ -21,6 +22,7 @@ function App() {
   const router = SimpleRouter.getInstance();
   const [currentPage, setCurrentPage] = useState<AppState>(router.getCurrentRoute());
   const [shareId, setShareId] = useState<string | null>(null);
+  const [allowlistId, setAllowlistId] = useState<string | null>(null);
   
   let authContext;
   try {
@@ -67,6 +69,12 @@ function App() {
       setShareId(extractedShareId);
     }
     
+    // Check for allowlist ID in URL
+    const extractedAllowlistId = router.getAllowlistIdFromPath();
+    if (extractedAllowlistId) {
+      setAllowlistId(extractedAllowlistId);
+    }
+    
     // Listen for route changes
     const unsubscribe = router.onRouteChange((route, params) => {
       console.log('App: Route changed', { route, params });
@@ -76,6 +84,12 @@ function App() {
         setShareId(params.shareId);
       } else if (route !== 'sharedfile') {
         setShareId(null);
+      }
+      
+      if (route === 'allowlist' && params?.allowlistId) {
+        setAllowlistId(params.allowlistId);
+      } else if (route !== 'allowlist') {
+        setAllowlistId(null);
       }
     });
 
@@ -206,6 +220,14 @@ function App() {
       {currentPage === 'sharedfile' && shareId && (
         <SharedFileViewer
           shareId={shareId}
+          onNavigateToAuth={() => router.navigate('auth')}
+          onNavigateToLanding={() => router.navigate('landing')}
+        />
+      )}
+
+      {currentPage === 'allowlist' && allowlistId && (
+        <AllowlistViewer
+          allowlistId={allowlistId}
           onNavigateToAuth={() => router.navigate('auth')}
           onNavigateToLanding={() => router.navigate('landing')}
         />

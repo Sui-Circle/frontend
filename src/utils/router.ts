@@ -1,6 +1,6 @@
 // Simple router utility for handling URL paths without external dependencies
 
-export type AppRoute = 'landing' | 'auth' | 'dashboard' | 'transfer' | 'success' | 'voicedemo' | 'voicetest' | 'sharedfile';
+export type AppRoute = 'landing' | 'auth' | 'dashboard' | 'transfer' | 'success' | 'voicedemo' | 'voicetest' | 'sharedfile' | 'allowlist';
 
 export class SimpleRouter {
   private static instance: SimpleRouter;
@@ -30,6 +30,7 @@ export class SimpleRouter {
 
   private pathToRoute(path: string): AppRoute {
     if (path.startsWith('/share/')) return 'sharedfile';
+    if (path.startsWith('/allowlist/')) return 'allowlist';
     if (path === '/dashboard') return 'dashboard';
     if (path === '/auth') return 'auth';
     if (path === '/transfer') return 'transfer';
@@ -48,6 +49,7 @@ export class SimpleRouter {
       case 'voicetest': return '/voice-test';
       case 'success': return '/success';
       case 'sharedfile': return params?.shareId ? `/share/${params.shareId}` : '/';
+      case 'allowlist': return params?.allowlistId ? `/allowlist/${params.allowlistId}` : '/';
       case 'landing':
       default:
         return '/';
@@ -107,5 +109,11 @@ export class SimpleRouter {
     const path = window.location.pathname;
     const shareMatch = path.match(/^\/share\/(.+)$/);
     return shareMatch ? shareMatch[1] : null;
+  }
+
+  public getAllowlistIdFromPath(): string | null {
+    const path = window.location.pathname;
+    const allowlistMatch = path.match(/^\/allowlist\/(.+)$/);
+    return allowlistMatch ? allowlistMatch[1] : null;
   }
 }
