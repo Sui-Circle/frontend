@@ -1,11 +1,4 @@
-/**
- * Testnet contract addresses and configuration for Sui Send
- */
-
 export const testnet = {
-    // Sui send package ID 
-    PACKAGE_ID: "0x",
-    
-    // Chain ID for testnet
-    CHAIN_ID: "sui:testnet",
-  };
+  packageId: "0xc5ce2742cac46421b62028557f1d7aea8a4c50f651379a79afdf12cd88628807",
+  mvrName: "@pkg/seal-demo-1234",
+};
