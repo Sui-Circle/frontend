@@ -2,7 +2,7 @@
 import React from "react";
 import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { networkConfig, network } from "./Contract";
+import { networkConfig, network } from "./contract";
 import "@mysten/dapp-kit/dist/index.css";
 
 const queryClient = new QueryClient({
