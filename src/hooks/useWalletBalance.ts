@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useCurrentWallet, useCurrentAccount } from '@mysten/dapp-kit';
-import { suiClient } from '../contract';
+import { suiClient } from '../contract/index.js';
 
 interface BalanceInfo {
   loading: boolean;
