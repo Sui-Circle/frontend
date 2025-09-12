@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { useCurrentWallet, useCurrentAccount } from '@mysten/dapp-kit';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import WalletConnectButton from './WalletConnectButton';
 import { Button } from '@/components/ui/button';
@@ -17,9 +16,6 @@ const WalletAuthButton: React.FC<WalletAuthButtonProps> = ({
   variant = 'default',
   size = 'default'
 }) => {
-  const { currentWallet, connectionStatus } = useCurrentWallet();
-  const account = useCurrentAccount();
-  const isConnected = connectionStatus === 'connected';
   const { isAuthenticated, login, logout } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
@@ -30,15 +26,13 @@ const WalletAuthButton: React.FC<WalletAuthButtonProps> = ({
       try {
         // Since the backend server is not running or the endpoint is not available,
         // we'll create a mock wallet authentication response
-        const mockToken = `wallet_auth_${address}_${Date.now()}`;
         const mockUser = {
-          walletAddress: address,
-          provider: 'wallet',
-          name: `Wallet (${address.substring(0, 6)}...${address.substring(address.length - 4)})`,
+          address: address,
+          label: `Wallet (${address.substring(0, 6)}...${address.substring(address.length - 4)})`,
         };
         
-        // Login with the mock wallet data
-        login(mockToken, mockUser);
+        // Login with the wallet data
+        login(mockUser);
         toast.success('Successfully authenticated with wallet');
       } catch (error) {
         console.error('Failed to authenticate with wallet:', error);
@@ -49,10 +43,6 @@ const WalletAuthButton: React.FC<WalletAuthButtonProps> = ({
     }
   };
 
-  // Handle wallet connection error
-  const handleWalletConnectError = (error: string) => {
-    toast.error(`Wallet connection failed: ${error}`);
-  };
 
   // Handle logout
   const handleLogout = () => {
@@ -65,7 +55,6 @@ const WalletAuthButton: React.FC<WalletAuthButtonProps> = ({
       {!isAuthenticated ? (
         <WalletConnectButton
           onConnectSuccess={handleWalletConnectSuccess}
-          onConnectError={handleWalletConnectError}
           className={className}
           variant={variant}
           size={size}

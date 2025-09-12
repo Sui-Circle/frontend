@@ -3,6 +3,7 @@ import { LandingPage } from '@/components/pages/LandingPage';
 import { AuthPage } from '@/components/pages/AuthPage';
 import { TransferPage } from '@/components/pages/TransferPage';
 import { SharedFileViewer } from '@/components/pages/SharedFileViewer';
+import { AllowlistViewer } from '@/components/pages/AllowlistViewer';
 // import { VoiceCommandDemo } from '@/components/voice/VoiceCommandDemo';
 // import { VoiceTestPage } from '@/components/voice/VoiceTestPage';
 import { DashboardPage } from '@/components/dashboard/DashboardPage';
@@ -21,6 +22,7 @@ function App() {
   const router = SimpleRouter.getInstance();
   const [currentPage, setCurrentPage] = useState<AppState>(router.getCurrentRoute());
   const [shareId, setShareId] = useState<string | null>(null);
+  const [allowlistId, setAllowlistId] = useState<string | null>(null);
   
   let authContext;
   try {
@@ -67,6 +69,12 @@ function App() {
       setShareId(extractedShareId);
     }
     
+    // Check for allowlist ID in URL
+    const extractedAllowlistId = router.getAllowlistIdFromPath();
+    if (extractedAllowlistId) {
+      setAllowlistId(extractedAllowlistId);
+    }
+    
     // Listen for route changes
     const unsubscribe = router.onRouteChange((route, params) => {
       console.log('App: Route changed', { route, params });
@@ -76,6 +84,12 @@ function App() {
         setShareId(params.shareId);
       } else if (route !== 'sharedfile') {
         setShareId(null);
+      }
+      
+      if (route === 'allowlist' && params?.allowlistId) {
+        setAllowlistId(params.allowlistId);
+      } else if (route !== 'allowlist') {
+        setAllowlistId(null);
       }
     });
 
@@ -91,11 +105,6 @@ function App() {
     }
   }, [isAuthenticated, currentPage, router]);
 
-  const handleFileUpload = (files: FileList) => {
-    // File upload is now handled by the FileUpload component directly
-    // No need to manage files in App state since they're stored in backend
-    console.log('Files selected for upload:', files.length);
-  };
 
   const handleAuthentication = () => {
     // Authentication is now handled by wallet connection
@@ -125,11 +134,6 @@ function App() {
     router.navigate('landing');
   };
 
-  const handleUploadSuccess = () => {
-    // Navigate to dashboard after successful upload
-    router.navigate('dashboard');
-    toast.success('Files uploaded successfully!');
-  };
 
   console.log('App: Rendering page', { currentPage, isAuthenticated, user });
 
@@ -137,11 +141,8 @@ function App() {
     <div className="min-h-screen">
       {currentPage === 'landing' && (
         <LandingPage
-          onFileUpload={handleFileUpload}
           onNavigateToAuth={() => router.navigate('auth')}
           onNavigateToFileList={() => router.navigate('dashboard')}
-          onNavigateToVoiceTest={() => router.navigate('voicetest')}
-          onUploadSuccess={handleUploadSuccess}
           isAuthenticated={isAuthenticated}
           user={user}
           onLogout={handleLogout}
@@ -156,8 +157,6 @@ function App() {
         <DashboardPage
           user={user}
           onLogout={handleLogout}
-          onNavigateToUpload={() => router.navigate('landing')}
-          onNavigateToTransfer={() => router.navigate('transfer')}
           onNavigateToDashboard={() => router.navigate('dashboard')}
         />
       )}
@@ -209,6 +208,14 @@ function App() {
       {currentPage === 'sharedfile' && shareId && (
         <SharedFileViewer
           shareId={shareId}
+          onNavigateToAuth={() => router.navigate('auth')}
+          onNavigateToLanding={() => router.navigate('landing')}
+        />
+      )}
+
+      {currentPage === 'allowlist' && allowlistId && (
+        <AllowlistViewer
+          allowlistId={allowlistId}
           onNavigateToAuth={() => router.navigate('auth')}
           onNavigateToLanding={() => router.navigate('landing')}
         />

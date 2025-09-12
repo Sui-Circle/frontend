@@ -3,24 +3,21 @@ import { AuthUser } from '../../contexts/AuthContext';
 import { DashboardLayout } from './DashboardLayout';
 import FileList from './FileList';
 import FileUpload from './FileUpload';
+import { AllowlistManager } from './AllowlistManager';
 import { Button } from '../ui/button';
-import { Upload, FileText, BarChart3, Settings } from 'lucide-react';
+import { Upload, FileText, BarChart3, Users } from 'lucide-react';
 
 interface DashboardPageProps {
   user: AuthUser | null;
   onLogout: () => void;
-  onNavigateToUpload: () => void;
-  onNavigateToTransfer: () => void;
   onNavigateToDashboard: () => void;
 }
 
-type DashboardView = 'overview' | 'files' | 'upload' | 'analytics';
+type DashboardView = 'overview' | 'files' | 'upload' | 'analytics' | 'allowlists';
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   user,
   onLogout,
-  onNavigateToUpload,
-  onNavigateToTransfer,
   onNavigateToDashboard
 }) => {
   const [currentView, setCurrentView] = useState<DashboardView>('files');
@@ -31,6 +28,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       label: 'My Files',
       icon: FileText,
       description: 'View and manage your uploaded files'
+    },
+    {
+      id: 'allowlists' as const,
+      label: 'Allowlists',
+      icon: Users,
+      description: 'Manage your allowlists and wallet access'
     },
     {
       id: 'upload' as const,
@@ -87,6 +90,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         );
       
+      case 'allowlists':
+        return (
+          <div>
+            <AllowlistManager user={user} />
+          </div>
+        );
+      
       case 'analytics':
         return (
           <div>
@@ -134,9 +144,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     <DashboardLayout
       user={user}
       onLogout={onLogout}
-      onNavigateToUpload={onNavigateToUpload}
       onNavigateToDashboard={onNavigateToDashboard}
-      onNavigateToTransfer={onNavigateToTransfer}
     >
       {/* Dashboard Navigation */}
       <div className="mb-8">

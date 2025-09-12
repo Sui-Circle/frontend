@@ -1,15 +1,10 @@
 import React from 'react';
 import type { AuthUser } from '../contexts/AuthContext';
 import {
-  GitHubIcon,
-  GoogleIcon,
-  FacebookIcon,
-  TwitchIcon,
-  AppleIcon,
-  UserIcon,
   LogoutIcon,
   CopyIcon
 } from './icons/SocialIcons';
+import { Wallet } from 'lucide-react';
 
 interface UserProfileProps {
   user: AuthUser;
@@ -17,28 +12,6 @@ interface UserProfileProps {
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
-  const getProviderIcon = (provider: string) => {
-    const iconProps = { size: 20 };
-    switch (provider.toLowerCase()) {
-      case 'github': return <GitHubIcon {...iconProps} />;
-      case 'google': return <GoogleIcon {...iconProps} />;
-      case 'facebook': return <FacebookIcon {...iconProps} />;
-      case 'twitch': return <TwitchIcon {...iconProps} />;
-      case 'apple': return <AppleIcon {...iconProps} />;
-      default: return <UserIcon {...iconProps} />;
-    }
-  };
-
-  const getProviderColor = (provider: string) => {
-    switch (provider.toLowerCase()) {
-      case 'github': return '#24292e';
-      case 'google': return '#4285f4';
-      case 'facebook': return '#1877f2';
-      case 'twitch': return '#9146ff';
-      case 'apple': return '#000000';
-      default: return '#666666';
-    }
-  };
 
   const formatAddress = (address: string) => {
     if (address.length <= 10) return address;
@@ -59,14 +32,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
     <div className="user-profile">
       <div className="profile-header">
         <div className="user-avatar">
-          <div className="provider-icon" style={{ color: getProviderColor(user.provider) }}>
-            {getProviderIcon(user.provider)}
+          <div className="provider-icon" style={{ color: '#3b82f6' }}>
+            <Wallet size={24} />
           </div>
         </div>
         <div className="user-info">
-          <h3 className="user-name">{user.name || user.email || 'Anonymous User'}</h3>
+          <h3 className="user-name">{user.label || 'Anonymous User'}</h3>
           <p className="user-provider">
-            Authenticated via {user.provider.charAt(0).toUpperCase() + user.provider.slice(1)}
+            Authenticated via Wallet
           </p>
         </div>
         <button className="logout-btn" onClick={onLogout} title="Logout">
@@ -75,22 +48,15 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
       </div>
 
       <div className="profile-details">
-        {user.email && (
-          <div className="detail-item">
-            <label>Email:</label>
-            <span>{user.email}</span>
-          </div>
-        )}
-        
         <div className="detail-item">
-          <label>zkLogin Address:</label>
+          <label>Wallet Address:</label>
           <div className="address-container">
-            <span className="address" title={user.zkLoginAddress}>
-              {formatAddress(user.zkLoginAddress)}
+            <span className="address" title={user.address}>
+              {formatAddress(user.address)}
             </span>
             <button
               className="copy-btn"
-              onClick={() => copyToClipboard(user.zkLoginAddress)}
+              onClick={() => copyToClipboard(user.address)}
               title="Copy full address"
             >
               <CopyIcon size={16} />

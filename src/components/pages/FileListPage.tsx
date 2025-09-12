@@ -1,8 +1,6 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import { FileList } from '@/components/dashboard';
-import { ArrowRight, Upload, Send } from 'lucide-react';
 
 interface FileListPageProps {
   onNavigateToTransfer?: () => void;
@@ -13,8 +11,6 @@ interface FileListPageProps {
 }
 
 export const FileListPage: React.FC<FileListPageProps> = ({
-  onNavigateToTransfer,
-  onNavigateToUpload,
   isAuthenticated = false,
   user,
   onLogout
