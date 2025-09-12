@@ -21,7 +21,7 @@ export function useWalletUploadEligibility(minimumBalance: number = 0.01): Walle
   const { connectionStatus } = useCurrentWallet();
   const isConnected = connectionStatus === 'connected';
   const { isAuthenticated, useTestMode } = useAuth();
-  const { isLoading: isBalanceLoading, hasMinimumBalance, error: balanceError } = useWalletBalance(minimumBalance);
+  const { loading: isBalanceLoading, hasMinimumBalance, error: balanceError } = useWalletBalance(BigInt(Math.floor(minimumBalance * 1000000000)));
   
   const [result, setResult] = useState<WalletUploadEligibilityResult>({
     isEligible: false,

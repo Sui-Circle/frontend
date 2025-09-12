@@ -1,7 +1,7 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSealEncryption } from '../../hooks/useSealEncryption';
-import { fileService, FileMetadata } from '../../services/fileService';
+import { fileService } from '../../services/fileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield, X, FileIcon, Upload } from 'lucide-react';
 // import { VoiceCommandButton } from '@/components/voice/VoiceCommandButton';

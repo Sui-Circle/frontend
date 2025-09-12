@@ -105,11 +105,6 @@ function App() {
     }
   }, [isAuthenticated, currentPage, router]);
 
-  const handleFileUpload = (files: FileList) => {
-    // File upload is now handled by the FileUpload component directly
-    // No need to manage files in App state since they're stored in backend
-    console.log('Files selected for upload:', files.length);
-  };
 
   const handleAuthentication = () => {
     // Authentication is now handled by wallet connection
@@ -139,11 +134,6 @@ function App() {
     router.navigate('landing');
   };
 
-  const handleUploadSuccess = () => {
-    // Navigate to dashboard after successful upload
-    router.navigate('dashboard');
-    toast.success('Files uploaded successfully!');
-  };
 
   console.log('App: Rendering page', { currentPage, isAuthenticated, user });
 
@@ -167,8 +157,6 @@ function App() {
         <DashboardPage
           user={user}
           onLogout={handleLogout}
-          onNavigateToUpload={() => router.navigate('landing')}
-          onNavigateToTransfer={() => router.navigate('transfer')}
           onNavigateToDashboard={() => router.navigate('dashboard')}
         />
       )}

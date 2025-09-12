@@ -10,8 +10,6 @@ import { Upload, FileText, BarChart3, Users } from 'lucide-react';
 interface DashboardPageProps {
   user: AuthUser | null;
   onLogout: () => void;
-  onNavigateToUpload: () => void;
-  onNavigateToTransfer: () => void;
   onNavigateToDashboard: () => void;
 }
 
@@ -20,8 +18,6 @@ type DashboardView = 'overview' | 'files' | 'upload' | 'analytics' | 'allowlists
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   user,
   onLogout,
-  onNavigateToUpload,
-  onNavigateToTransfer,
   onNavigateToDashboard
 }) => {
   const [currentView, setCurrentView] = useState<DashboardView>('files');
@@ -148,9 +144,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     <DashboardLayout
       user={user}
       onLogout={onLogout}
-      onNavigateToUpload={onNavigateToUpload}
       onNavigateToDashboard={onNavigateToDashboard}
-      onNavigateToTransfer={onNavigateToTransfer}
     >
       {/* Dashboard Navigation */}
       <div className="mb-8">

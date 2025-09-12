@@ -6,18 +6,14 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   user: AuthUser | null;
   onLogout: () => void;
-  onNavigateToUpload?: () => void;
   onNavigateToDashboard?: () => void;
-  onNavigateToTransfer?: () => void;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   user,
   onLogout,
-  onNavigateToUpload,
-  onNavigateToDashboard,
-  onNavigateToTransfer
+  onNavigateToDashboard
 }) => {
   return (
     <div className="min-h-screen bg-gray-50">

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { fileService, FileMetadata } from '../../services/fileService';
-import AccessControlButton from './AccessControlButton';
 import AccessControlStatus from './AccessControlStatus';
 import AccessControlConfig from './AccessControlConfig';
 import { accessControlService } from '../../services/accessControlService';
@@ -161,29 +160,6 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
     setSelectedFile(null);
   };
 
-  const clearFiles = async () => {
-    try {
-      // Check authentication for non-test mode
-      if (!useTestMode && !isAuthenticated) {
-        setError('Please log in to delete files.');
-        return;
-      }
-
-      setLoading(true);
-      const result = await fileService.clearUserFiles(user?.address || null, useTestMode);
-
-      if (result.success) {
-        setFiles([]);
-        setError('All files deleted successfully.');
-      } else {
-        setError(result.message || 'Failed to delete files.');
-      }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to delete files.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchFiles();

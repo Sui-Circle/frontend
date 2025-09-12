@@ -19,7 +19,6 @@ export const Header: React.FC<HeaderProps> = ({
   isAuthenticated: propIsAuthenticated,
   user: propUser,
   onLogout: propOnLogout,
-  onNavigateToAuth,
   onNavigateToDashboard
 }) => {
   const { isAuthenticated: contextIsAuthenticated, user: contextUser, logout: contextLogout } = useAuth();
