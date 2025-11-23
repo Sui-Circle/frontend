@@ -6,6 +6,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield, X, FileIcon, Upload } from 'lucide-react';
 // import { VoiceCommandButton } from '@/components/voice/VoiceCommandButton';
 import { toast } from 'sonner';
+import { useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { createWalrusClientFromSuiClient, uploadEncryptedBytes } from '../../services/walrusUploadService';
 
 interface FileUploadProps {
   onUploadSuccess?: (result: any) => void;
@@ -20,8 +22,7 @@ interface UploadResult {
     transactionDigest: string;
     walrusCid: string;
     encryptionKeys?: {
-      publicKey: string;
-      secretKey: string;
+      encryptionId: string;
     };
     isEncrypted?: boolean;
   };
@@ -51,6 +52,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
   // Encryption is always enabled - no user toggle needed
   const { isAuthenticated, useTestMode, user } = useAuth();
   const { state: encryptionState, encryptFile } = useSealEncryption();
+  const suiClient = useSuiClient();
+  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
 
   // Reference to the file input for voice commands
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,26 +74,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
   }, [initialFiles]);
 
-  // Voice command handler for file selection
-  // const handleVoiceFileSelect = useCallback(() => {
-  //   console.log('Voice command: Select file triggered');
-  //   if (fileInputRef.current) {
-  //     fileInputRef.current.click();
-  //     toast.success('Voice command: Opening file browser');
-  //   }
-  // }, []);
 
-  // Voice command handler for upload
-  // const handleVoiceUpload = useCallback(() => {
-  //   console.log('Voice command: Upload file triggered');
-  //   if (attachedFiles.length > 0) {
-  //     handleUploadAll();
-  //     toast.success('Voice command: Starting upload');
-  //   } else {
-  //     toast.error('No files attached. Please attach files first.');
-  //   }
-  // }, [attachedFiles]);
-
+  
   // Debug encryption state
   console.log('🔐 Current encryption state:', encryptionState);
 
@@ -153,69 +138,171 @@ const FileUpload: React.FC<FileUploadProps> = ({
     console.log('🔐 Encryption state:', encryptionState);
 
     try {
-      let fileToUpload = attachedFile.file;
-      let encryptionKeys: { publicKey: string; secretKey: string } | undefined;
+      const WALRUS_EPOCHS = 53; // default retention epochs; adjust as needed
+
+      let encryptionKeys: { encryptionId: string } | undefined;
       let isEncrypted = false;
 
-      // Try to encrypt files client-side before upload
+      // Helper: read File to Uint8Array
+      const fileToUint8Array = (file: File) =>
+        new Promise<Uint8Array>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+          reader.onerror = reject;
+          reader.readAsArrayBuffer(file);
+        });
+
+      // Encrypt client-side if ready
+      let bytesToUpload: Uint8Array;
+      let encryptionId: string | undefined;
       if (encryptionState.isReady) {
-        console.log('🔐 Encrypting file client-side before upload...');
+        console.log('🔐 Encrypting file client-side before Walrus upload...');
         try {
           const encryptionResult = await encryptFile(attachedFile.file);
-
-          if (encryptionResult.success) {
-            // Create a new File object from encrypted data
-            const encryptedBlob = new Blob([encryptionResult.encryptedData!], {
-              type: 'application/octet-stream'
-            });
-            fileToUpload = new File([encryptedBlob], `${attachedFile.file.name}.encrypted`, {
-              type: 'application/octet-stream'
-            });
-
+          if (encryptionResult.success && encryptionResult.encryptedData) {
+            bytesToUpload = encryptionResult.encryptedData as Uint8Array;
+            encryptionId = encryptionResult.encryptionId;
             encryptionKeys = {
-              publicKey: encryptionResult.publicKey!,
-              secretKey: encryptionResult.secretKey!
+              encryptionId: encryptionResult.encryptionId!,
             };
             isEncrypted = true;
-
-            console.log('✅ File encrypted successfully, proceeding with upload...');
+            console.log('✅ Encryption succeeded. Encryption ID:', encryptionId);
           } else {
-            console.warn('⚠️ Encryption failed, uploading without encryption:', encryptionResult.error);
+            console.warn('⚠️ Encryption failed; uploading plaintext bytes to Walrus');
+            bytesToUpload = await fileToUint8Array(attachedFile.file);
           }
         } catch (encryptError) {
-          console.warn('⚠️ Encryption error, uploading without encryption:', encryptError);
+          console.warn('⚠️ Encryption error; uploading plaintext bytes to Walrus:', encryptError);
+          bytesToUpload = await fileToUint8Array(attachedFile.file);
         }
       } else {
-        console.warn('⚠️ Encryption service not ready, uploading without encryption');
+        console.warn('⚠️ Encryption service not ready; uploading plaintext bytes to Walrus');
+        bytesToUpload = await fileToUint8Array(attachedFile.file);
       }
 
-      // Prepare encryption data if file was encrypted
-      const encryptionData = isEncrypted && encryptionKeys ? {
-        encryptedFile: fileToUpload,
-        encryptionKeys
-      } : undefined;
+      // In test mode, fall back to backend test upload endpoint
+      if (useTestMode) {
+        let encryptionPayload: {
+          encryptedFile: File;
+          encryptionKeys: { encryptionId: string };
+        } | undefined;
 
-      // Debug: Log the user object and wallet address
-      console.log('🔍 Upload debug:', {
-        user,
-        walletAddress: user?.address,
-        useTestMode,
-        hasEncryptionData: !!encryptionData
+        if (isEncrypted && encryptionKeys) {
+          const encryptedBlob = new Blob([bytesToUpload], { type: 'application/octet-stream' });
+          const encryptedFileObj = new File(
+            [encryptedBlob],
+            `${attachedFile.file.name}.encrypted`,
+            { type: 'application/octet-stream' }
+          );
+          encryptionPayload = {
+            encryptedFile: encryptedFileObj,
+            encryptionKeys,
+          };
+        }
+
+        const result = await fileService.uploadFile(
+          attachedFile.file,
+          user?.address || null,
+          true,
+          encryptionPayload,
+        );
+        if (!result.success) throw new Error(result.message || 'Upload failed');
+        return result;
+      }
+
+      if (!user?.address) {
+        throw new Error('Wallet address required for Walrus upload');
+      }
+
+      // Check if user has WAL tokens before attempting upload
+      console.log('💰 Checking wallet balance...');
+      console.log('👤 Connected wallet:', user.address);
+      const walTokenType = '0x8270feb7375eee355e64fdb69c50abb6b5f9393a722883c1cf45f8e26048810a::wal::WAL';
+      
+      try {
+        const walBalance = await suiClient.getBalance({
+          owner: user.address,
+          coinType: walTokenType,
+        });
+        
+        console.log('📥 Balance response:', walBalance);
+        const walBalanceInMIST = parseInt(walBalance.totalBalance);
+        const walBalanceInWAL = walBalanceInMIST / 1_000_000_000; // Convert from MIST to WAL
+        console.log(`💎 WAL Balance (raw): ${walBalanceInMIST} MIST`);
+        console.log(`💎 WAL Balance: ${walBalanceInWAL} WAL`);
+        console.log(`📦 File size: ${bytesToUpload.length} bytes`);
+        console.log(`⏱️  Epochs: ${WALRUS_EPOCHS}`);
+        
+        // Estimate required WAL (very rough estimate: ~0.001 WAL per KB per epoch)
+        const fileSizeKB = bytesToUpload.length / 1024;
+        const estimatedWALNeeded = (fileSizeKB * WALRUS_EPOCHS * 0.001);
+        console.log(`📊 Estimated WAL needed: ~${estimatedWALNeeded.toFixed(6)} WAL`);
+        
+        if (walBalanceInMIST === 0) {
+          throw new Error(
+            `You need WAL tokens to upload to Walrus.\n\n` +
+            `Your wallet: ${user.address}\n\n` +
+            `You have: 0 WAL\n` +
+            `Estimated needed: ${estimatedWALNeeded.toFixed(2)} WAL\n\n` +
+            `Please get WAL tokens from:\n` +
+            `1. Walrus Discord faucet: https://discord.gg/walrus\n` +
+            `2. Or swap SUI for WAL on a testnet DEX`
+          );
+        }
+        
+        if (walBalanceInWAL < estimatedWALNeeded) {
+          console.warn(`⚠️  Warning: Your WAL balance (${walBalanceInWAL} WAL) is likely insufficient`);
+          console.warn(`   You have: ${walBalanceInWAL.toFixed(6)} WAL`);
+          console.warn(`   Estimated needed: ${estimatedWALNeeded.toFixed(6)} WAL`);
+          console.warn(`   Attempting upload anyway - wallet transaction will show exact amount needed`);
+        } else {
+          console.log(`✅ WAL balance is sufficient for upload`);
+        }
+      } catch (balanceError: any) {
+        if (balanceError.message?.includes('need WAL tokens')) {
+          throw balanceError;
+        }
+        console.warn('Could not check WAL balance:', balanceError);
+        // Continue anyway - let the upload attempt and show error if insufficient
+      }
+
+      // Upload to Walrus with user's wallet signing (user must approve in wallet)
+      console.log('📤 Starting Walrus upload with user wallet:', user.address);
+      const walrusClient = createWalrusClientFromSuiClient();
+      
+      const writeRes = await uploadEncryptedBytes(
+        walrusClient,
+        bytesToUpload,
+        WALRUS_EPOCHS,
+        user.address,
+        signAndExecute,
+        false // deletable
+      );
+      const walrusCid = writeRes.blobId;
+      console.log('✅ Walrus upload complete! Blob ID:', walrusCid);
+
+      // Authenticate wallet to get backend token
+      const auth = await fileService.authenticateWallet(user.address);
+      if (!auth.success || !auth.token) {
+        throw new Error(auth.message || 'Failed to authenticate wallet');
+      }
+
+      // Send metadata to backend to record the upload
+      const metaResult = await fileService.uploadFileMetadata(auth.token, {
+        walrusCid,
+        filename: attachedFile.name,
+        fileSize: attachedFile.size,
+        contentType: attachedFile.type || 'application/octet-stream',
+        enableEncryption: isEncrypted,
+        encryptionKeys,
+        walrusOptions: { epochs: WALRUS_EPOCHS, deletable: false },
       });
 
-      // Use the file service for upload
-      const result = await fileService.uploadFile(
-        attachedFile.file, // Pass original file for metadata
-        user?.address || null, // Pass wallet address for authentication
-        useTestMode,
-        encryptionData
-      );
-
-      if (!result.success) {
-        throw new Error(result.message || 'Upload failed');
+      if (!metaResult.success) {
+        throw new Error(metaResult.message || 'Upload metadata failed');
       }
 
-      return result;
+      return metaResult;
 
     } catch (error) {
       console.error('❌ Upload error:', error);
@@ -488,17 +575,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
           </div>
         )}
 
-        {/* Voice Commands */}
-        {/* <div className="mt-8 text-center">
-          <VoiceCommandButton
-            onFileAttachCommand={handleVoiceFileSelect}
-            disabled={globalUploading}
-            className="mx-auto"
-          />
-          <p className="text-sm text-gray-500 mt-2">
-            Try saying: "upload a file" or "attach file"
-          </p>
-        </div> */}
       </div>
     </div>
   );

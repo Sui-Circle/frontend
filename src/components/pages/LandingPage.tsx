@@ -7,6 +7,7 @@ import { SealClient } from '@mysten/seal';
 import { fromHex, toHex } from '@mysten/sui/utils';
 import { Transaction } from '@mysten/sui/transactions';
 import { useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { suiClient as contractSuiClient } from '@/contract';
 
 interface LandingPageProps {
   onNavigateToAuth: () => void;
@@ -66,10 +67,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // SEAL and Sui setup
-  const suiClient = useSuiClient();
+  // Wallet-bound client for signing/executing; keep for wallet flows
+  const walletSuiClient = useSuiClient();
   const { mutate: signAndExecute } = useSignAndExecuteTransaction({
     execute: async ({ bytes, signature }) =>
-      await suiClient.executeTransactionBlock({
+      await walletSuiClient.executeTransactionBlock({
         transactionBlock: bytes,
         signature,
         options: {
@@ -82,7 +84,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   // Verify package exists on testnet
   const verifyPackage = async () => {
     try {
-      const packageData = await suiClient.getObject({
+      // Use direct SuiClient instance aligned with @mysten/sui/client
+      const packageData = await contractSuiClient.getObject({
         id: TESTNET_PACKAGE_ID,
         options: { showContent: true }
       });
@@ -98,9 +101,112 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
   
+  // Minimal wrapper that adds the missing `core` field SealClient expects
+  const wrapForSeal = (client: any) => {
+    const wrapped = { ...client };
+    const core = { ...(client?.core || {}) };
+
+    if (typeof core.getMoveFunction !== 'function') {
+      core.getMoveFunction = async (keys: any) => {
+        try {
+          if (Array.isArray(keys)) {
+            const results = await Promise.all(
+              keys.map((key: any) => {
+                if (key && typeof key === 'object' && !Array.isArray(key)) {
+                  const pkg = String(key.package ?? key.packageId ?? '');
+                  const mod = String(key.module ?? key.moduleName ?? '');
+                  const fn = String(key.function ?? key.functionName ?? '');
+                  if (!pkg || !mod || !fn) return Promise.resolve(null);
+                  return client
+                    .getNormalizedMoveFunction({ package: pkg, module: mod, function: fn })
+                    .catch(() => null);
+                }
+                if (Array.isArray(key)) {
+                  const [pkg, mod, fn] = key;
+                  if (!pkg || !mod || !fn) return Promise.resolve(null);
+                  return client
+                    .getNormalizedMoveFunction({ package: String(pkg), module: String(mod), function: String(fn) })
+                    .catch(() => null);
+                }
+                return Promise.resolve(null);
+              })
+            );
+            return results;
+          }
+
+          if (keys && typeof keys === 'object' && !Array.isArray(keys)) {
+            const pkg = String((keys as any).package ?? (keys as any).packageId ?? '');
+            const mod = String((keys as any).module ?? (keys as any).moduleName ?? '');
+            const fn = String((keys as any).function ?? (keys as any).functionName ?? '');
+            return await client.getNormalizedMoveFunction({ package: pkg, module: mod, function: fn });
+          }
+
+          const [pkg, mod, fn] = Array.isArray(keys) ? keys : [keys, undefined, undefined];
+          return await client.getNormalizedMoveFunction({
+            package: String(pkg ?? ''),
+            module: String(mod ?? ''),
+            function: String(fn ?? ''),
+          });
+        } catch (error) {
+          console.error('getMoveFunction failed:', error);
+          throw error;
+        }
+      };
+    }
+
+    if (typeof core.getObjects !== 'function') {
+      core.getObjects = async (ids: any) => {
+        let idsArray: string[] = [];
+
+        if (Array.isArray(ids)) {
+          idsArray = ids.map(String);
+        } else if (ids && Array.isArray(ids.ids)) {
+          idsArray = ids.ids.map(String);
+        } else if (typeof ids === 'string') {
+          idsArray = [ids];
+        } else if (ids && typeof ids === 'object') {
+          try {
+            idsArray = Array.from(ids as Iterable<any>).map(String);
+          } catch {
+            idsArray = [];
+          }
+        }
+
+        if (idsArray.length === 0) return [];
+
+        try {
+          const results = await client.multiGetObjects({
+            ids: idsArray,
+            options: {
+              showType: true,
+              showOwner: true,
+              showContent: true,
+              showDisplay: true,
+              showBcs: true,
+            },
+          });
+
+          if (Array.isArray(results)) {
+            if (results.length !== idsArray.length) {
+              const byId = new Map(results.map((r: any) => [r?.data?.objectId || r?.objectId, r]));
+              return idsArray.map((id) => byId.get(id) ?? null);
+            }
+            return results;
+          }
+          return idsArray.map(() => results ?? null);
+        } catch (err) {
+          return idsArray.map(() => null);
+        }
+      };
+    }
+
+    wrapped.core = core;
+    return wrapped;
+  };
+
   // Create SEAL client when needed
   const createSealClient = () => new SealClient({
-    suiClient: suiClient as any, // Type assertion to handle version mismatch
+    suiClient: wrapForSeal(contractSuiClient),
     serverConfigs: SERVER_OBJECT_IDS.map((id) => ({
       objectId: id,
       weight: 1,
@@ -235,7 +341,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
     // Check user's SUI balance
     try {
-      const balance = await suiClient.getBalance({
+      const balance = await contractSuiClient.getBalance({
         owner: user.address,
         coinType: '0x2::sui::SUI'
       });
@@ -452,7 +558,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const associateFileWithAllowlist = async (allowlistId: string, blobId: string) => {
     try {
       // Get the cap ID for this allowlist
-      const ownedObjects = await suiClient.getOwnedObjects({
+      const ownedObjects = await contractSuiClient.getOwnedObjects({
         owner: user?.address!,
         options: { showContent: true, showType: true },
         filter: { StructType: `${TESTNET_PACKAGE_ID}::allowlist::Cap` },
@@ -564,7 +670,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
     try {
       // Get the cap ID for this allowlist
-      const ownedObjects = await suiClient.getOwnedObjects({
+      const ownedObjects = await contractSuiClient.getOwnedObjects({
         owner: user?.address!,
         options: { showContent: true, showType: true },
         filter: { StructType: `${TESTNET_PACKAGE_ID}::allowlist::Cap` },

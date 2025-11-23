@@ -55,8 +55,102 @@ export const AllowlistViewer: React.FC<AllowlistViewerProps> = ({
   const suiClient = useSuiClient();
   const { mutate: signPersonalMessage } = useSignPersonalMessage();
 
+  // Ensure SealClient receives a suiClient with expected `core` methods
+  const wrapForSeal = (client: any) => {
+    const wrapped = { ...client };
+    const core: any = { ...(client?.core || {}) };
+
+    if (typeof core.getMoveFunction !== 'function') {
+      core.getMoveFunction = async (keys: any) => {
+        if (Array.isArray(keys)) {
+          const results = await Promise.all(
+            keys.map((key: any) => {
+              if (key && typeof key === 'object' && !Array.isArray(key)) {
+                const pkg = String(key.package ?? key.packageId ?? '');
+                const mod = String(key.module ?? key.moduleName ?? '');
+                const fn = String(key.function ?? key.functionName ?? '');
+                if (!pkg || !mod || !fn) return Promise.resolve(null);
+                return client
+                  .getNormalizedMoveFunction({ package: pkg, module: mod, function: fn })
+                  .catch(() => null);
+              }
+              if (Array.isArray(key)) {
+                const [pkg, mod, fn] = key;
+                if (!pkg || !mod || !fn) return Promise.resolve(null);
+                return client
+                  .getNormalizedMoveFunction({ package: String(pkg), module: String(mod), function: String(fn) })
+                  .catch(() => null);
+              }
+              return Promise.resolve(null);
+            })
+          );
+          return results;
+        }
+
+        if (keys && typeof keys === 'object' && !Array.isArray(keys)) {
+          const pkg = String((keys as any).package ?? (keys as any).packageId ?? '');
+          const mod = String((keys as any).module ?? (keys as any).moduleName ?? '');
+          const fn = String((keys as any).function ?? (keys as any).functionName ?? '');
+          return await client.getNormalizedMoveFunction({ package: pkg, module: mod, function: fn });
+        }
+
+        const [pkg, mod, fn] = Array.isArray(keys) ? keys : [keys, undefined, undefined];
+        return await client.getNormalizedMoveFunction({
+          package: String(pkg ?? ''),
+          module: String(mod ?? ''),
+          function: String(fn ?? ''),
+        });
+      };
+    }
+
+    if (typeof core.getObjects !== 'function') {
+      core.getObjects = async (ids: any) => {
+        let idsArray: string[] = [];
+        if (Array.isArray(ids)) {
+          idsArray = ids.map(String);
+        } else if (ids && Array.isArray(ids.ids)) {
+          idsArray = ids.ids.map(String);
+        } else if (typeof ids === 'string') {
+          idsArray = [ids];
+        } else if (ids && typeof ids === 'object') {
+          try {
+            idsArray = Array.from(ids as Iterable<any>).map(String);
+          } catch {
+            idsArray = [];
+          }
+        }
+        if (idsArray.length === 0) return [];
+        try {
+          const results = await client.multiGetObjects({
+            ids: idsArray,
+            options: {
+              showType: true,
+              showOwner: true,
+              showContent: true,
+              showDisplay: true,
+              showBcs: true,
+            },
+          });
+          if (Array.isArray(results)) {
+            if (results.length !== idsArray.length) {
+              const byId = new Map(results.map((r: any) => [r?.data?.objectId || r?.objectId, r]));
+              return idsArray.map((id) => byId.get(id) ?? null);
+            }
+            return results;
+          }
+          return idsArray.map(() => results ?? null);
+        } catch (err) {
+          return idsArray.map(() => null);
+        }
+      };
+    }
+
+    wrapped.core = core;
+    return wrapped;
+  };
+
   const client = new SealClient({
-    suiClient: suiClient as any, // Type assertion to resolve version compatibility
+    suiClient: wrapForSeal(suiClient as any),
     serverConfigs: SERVER_OBJECT_IDS.map((id) => ({
       objectId: id,
       weight: 1,

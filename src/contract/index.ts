@@ -22,14 +22,16 @@ function createBetterTxFactory<T extends Record<string, unknown>>(
 type Network = "mainnet" | "testnet"
 
 const network = "testnet";
+const isDev = (import.meta as any).env?.DEV;
+const TESTNET_URL = (import.meta as any).env?.VITE_SUI_RPC_URL || (isDev ? '/sui-rpc' : getFullnodeUrl('testnet'));
 
 const { networkConfig, useNetworkVariables } = createNetworkConfig({
     testnet: {
-        url: getFullnodeUrl("testnet"),
+        url: TESTNET_URL,
         variables: getContractConfig(),
     },
     mainnet: {
-        url: getFullnodeUrl("mainnet"), 
+        url: getFullnodeUrl('mainnet'), 
         variables: getContractConfig(),
     }
 });

@@ -4,18 +4,21 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
+  assetsInclude: ['**/*.wasm'],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
   optimizeDeps: {
-    exclude: ['lucide-react'],
+    exclude: ['lucide-react', '@mysten/walrus'],
     include: [
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
       '@radix-ui/react-popover',
       '@radix-ui/react-tooltip',
+      'poseidon-lite',
+      'dataloader',
       '@radix-ui/react-accordion',
       '@radix-ui/react-alert-dialog',
       '@radix-ui/react-aspect-ratio',
@@ -118,6 +121,14 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/publisher6/, ''),
       },
+      '/sui-rpc': {
+        target: 'https://fullnode.testnet.sui.io',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/sui-rpc/, ''),
+        timeout: 120000,
+        proxyTimeout: 120000,
+      }
     },
   },
 });

@@ -225,6 +225,46 @@ export const AllowlistManager: React.FC<AllowlistManagerProps> = ({ user }) => {
     }
   };
 
+  const createNewAllowlist = async () => {
+    try {
+      if (!user?.address) {
+        toast.error('Connect wallet to create allowlist');
+        return;
+      }
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${TESTNET_PACKAGE_ID}::allowlist::create_allowlist_entry`,
+        arguments: [tx.pure.string('Personal Allowlist')],
+      });
+      tx.setGasBudget(10000000);
+      const res: any = await new Promise((resolve, reject) => {
+        signAndExecute({ transaction: tx as any }, { onSuccess: resolve, onError: reject });
+      });
+      const created = res?.effects?.created || [];
+      const shared = created.find((it: any) => it.owner && typeof it.owner === 'object' && 'Shared' in it.owner);
+      const allowlistId: string | null = shared?.reference?.objectId || null;
+      const capObj = created.find((it: any) => typeof it?.reference?.type === 'string' && it.reference.type.includes('::allowlist::Cap'));
+      const capId = capObj?.reference?.objectId;
+      if (!allowlistId || !capId) {
+        toast.error('Failed to create allowlist');
+        return;
+      }
+      const addTx = new Transaction();
+      addTx.moveCall({
+        target: `${TESTNET_PACKAGE_ID}::allowlist::add`,
+        arguments: [addTx.object(allowlistId), addTx.object(capId), addTx.pure.address(user.address)],
+      });
+      addTx.setGasBudget(10000000);
+      await new Promise((resolve, reject) => {
+        signAndExecute({ transaction: addTx as any }, { onSuccess: () => resolve(true), onError: reject });
+      });
+      toast.success('Allowlist created and address added');
+      setAllowlists(prev => [{ id: allowlistId, name: 'Personal Allowlist', addresses: [user.address], fileCount: 0, createdAt: new Date().toLocaleDateString() }, ...prev]);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to create allowlist');
+    }
+  };
+
   const getAllowlistViewerLink = (allowlistId: string) => {
     return `${window.location.origin}/allowlist/${allowlistId}`;
   };
@@ -258,7 +298,7 @@ export const AllowlistManager: React.FC<AllowlistManagerProps> = ({ user }) => {
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">My Allowlists</h2>
         <Button 
-          onClick={() => window.location.href = '/'}
+          onClick={createNewAllowlist}
           className="bg-blue-600 hover:bg-blue-700"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -274,7 +314,7 @@ export const AllowlistManager: React.FC<AllowlistManagerProps> = ({ user }) => {
             You haven't created any allowlists yet. Create your first allowlist to start sharing files securely.
           </p>
           <Button 
-            onClick={() => window.location.href = '/'}
+            onClick={createNewAllowlist}
             className="bg-blue-600 hover:bg-blue-700"
           >
             <Plus className="w-4 h-4 mr-2" />

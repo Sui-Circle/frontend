@@ -79,8 +79,14 @@ export const SharedFileViewer: React.FC<SharedFileViewerProps> = ({
   const loadFileContent = async () => {
     if (!shareData?.fileCid) return;
     try {
-      // Use the shared file download service
-      const result = await fileService.downloadSharedFile(shareId, null);
+      let authToken: string | null = null;
+      if (isAuthenticated && user?.address) {
+        const auth = await fileService.authenticateWallet(user.address);
+        if (auth.success && auth.token) {
+          authToken = auth.token;
+        }
+      }
+      const result = await fileService.downloadSharedFile(shareId, authToken);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to download file');

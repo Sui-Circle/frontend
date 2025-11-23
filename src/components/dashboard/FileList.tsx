@@ -6,7 +6,9 @@ import AccessControlConfig from './AccessControlConfig';
 import { accessControlService } from '../../services/accessControlService';
 import { toast } from 'sonner';
 import './FileList.css';
-
+import { Transaction } from '@mysten/sui/transactions';
+import { useSignPersonalMessage, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { getNetworkVariables, network } from '@/contract/index';
 
 
 interface FileListProps {
@@ -64,6 +66,11 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
   const [selectedFile, setSelectedFile] = useState<FileMetadata | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const { useTestMode, user, isAuthenticated } = useAuth();
+  const { mutateAsync: signPersonalMessageAsync } = useSignPersonalMessage();
+  const suiClient = useSuiClient();
+  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
+  const TESTNET_PACKAGE_ID = (import.meta as any).env?.VITE_SUI_PACKAGE_ID || getNetworkVariables(network).packageId;
+  const [decryptedUrls, setDecryptedUrls] = useState<Record<string, string>>({});
 
   const fetchFiles = async () => {
     setLoading(true);
@@ -99,15 +106,223 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
     }
   };
 
-  const downloadFile = async (cid: string, filename: string) => {
+  const downloadFile = async (file: FileMetadata) => {
     try {
-      const result = await fileService.downloadFile(cid, filename, useTestMode);
-
+      let proof: { sessionKey: any; txBytesBase64: string } | undefined;
+      if (user?.address) {
+        try {
+          console.log('downloadFile: preparing proof...');
+          const allowlistId = await resolveOrCreateAllowlistId();
+          if (allowlistId) {
+            const encryptionId = file.encryptionKeys?.encryptionId || await fileService.peekEncryptionId(file, user.address, useTestMode);
+            if (!encryptionId) {
+              console.warn('downloadFile: missing encryptionId');
+            } else {
+              file.encryptionKeys = { encryptionId };
+              const signer = async (message: Uint8Array) => {
+                console.log('downloadFile: requesting personal message signature...');
+                const result: any = await signPersonalMessageAsync({ message });
+                console.log('downloadFile: personal message signed');
+                return typeof result === 'string' ? result : result.signature;
+              };
+              const attach = await fileService.attachDecryptionProof(
+                file,
+                user.address,
+                allowlistId,
+                signer,
+              );
+              if (attach.success && attach.proof) {
+                proof = attach.proof;
+                console.log('downloadFile: proof ready', { txBytesLen: proof.txBytesBase64.length });
+              } else {
+                console.warn('downloadFile: attachDecryptionProof failed', attach.message);
+              }
+            }
+          } else {
+            console.warn('downloadFile: allowlist not ready');
+          }
+        } catch (e) {
+          console.warn('downloadFile: proof preparation error', e);
+        }
+      }
+      const result = await fileService.downloadAndMaybeDecrypt(file, user?.address || null, useTestMode, proof);
       if (!result.success) {
         throw new Error(result.error || 'Failed to download file');
       }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to download file');
+    }
+  };
+
+  const resolveOrCreateAllowlistId = async (): Promise<string | null> => {
+    try {
+      if (!user?.address) return null;
+      const cached = localStorage.getItem('allowlistId');
+      if (cached) return cached;
+      const owned = await suiClient.getOwnedObjects({
+        owner: user.address,
+        options: { showContent: true, showType: true },
+        filter: { StructType: `${TESTNET_PACKAGE_ID}::allowlist::Cap` },
+      });
+      const existing = owned.data
+        .map((it: any) => ((it?.data?.content as { fields: any })?.fields))
+        .filter((f: any) => f && f.allowlist_id)
+        .map((f: any) => f.allowlist_id)[0] as string | undefined;
+      if (existing) { localStorage.setItem('allowlistId', existing); return existing; }
+
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${TESTNET_PACKAGE_ID}::allowlist::create_allowlist_entry`,
+        arguments: [tx.pure.string('Personal Allowlist')],
+      });
+      tx.setGasBudget(10000000);
+      let res: any;
+      try {
+        res = await new Promise((resolve, reject) => {
+          signAndExecute(
+            { transaction: tx as any },
+            { onSuccess: (r: any) => resolve(r), onError: reject },
+          );
+        });
+      } catch {
+        await new Promise((r) => setTimeout(r, 2000));
+        res = await new Promise((resolve, reject) => {
+          signAndExecute(
+            { transaction: tx as any },
+            { onSuccess: (r: any) => resolve(r), onError: reject },
+          );
+        });
+      }
+
+      const created = res?.effects?.created || [];
+      const shared = created.find((it: any) => it.owner && typeof it.owner === 'object' && 'Shared' in it.owner);
+      const allowlistId: string | null = shared?.reference?.objectId || null;
+      if (!allowlistId) return null;
+      localStorage.setItem('allowlistId', allowlistId);
+
+      const caps = await suiClient.getOwnedObjects({
+        owner: user.address,
+        options: { showContent: true, showType: true },
+        filter: { StructType: `${TESTNET_PACKAGE_ID}::allowlist::Cap` },
+      });
+      const capId = caps.data
+        .map((cap) => {
+          const capFields = (cap?.data?.content as { fields: any })?.fields;
+          return { id: capFields?.id?.id, allowlist_id: capFields?.allowlist_id };
+        })
+        .filter((x) => x.allowlist_id === allowlistId)
+        .map((x) => x.id)[0] as string | undefined;
+
+      if (capId) {
+        const addTx = new Transaction();
+        addTx.moveCall({
+          target: `${TESTNET_PACKAGE_ID}::allowlist::add`,
+          arguments: [addTx.object(allowlistId), addTx.object(capId), addTx.pure.address(user.address)],
+        });
+        addTx.setGasBudget(10000000);
+        try {
+          await new Promise((resolve, reject) => {
+            signAndExecute({ transaction: addTx as any }, { onSuccess: () => resolve(true), onError: reject });
+          });
+        } catch {}
+      }
+
+      return allowlistId;
+    } catch (e) {
+      console.warn('Allowlist resolution failed:', e);
+      return null;
+    }
+  };
+
+  const decryptFile = async (file: FileMetadata) => {
+    try {
+      if (!file.isEncrypted) return downloadFile(file);
+      if (!user?.address) {
+        toast.error('Wallet address required to decrypt file');
+        return;
+      }
+      if (!file.encryptionKeys?.encryptionId) {
+        toast.error('Missing encryptionId for this file');
+        return;
+      }
+      const allowlistId = await resolveOrCreateAllowlistId();
+      if (!allowlistId) {
+        toast.error('Failed to prepare allowlist');
+        return;
+      }
+      const signer = async (message: Uint8Array) => {
+        const result: any = await signPersonalMessageAsync({ message });
+        return typeof result === 'string' ? result : result.signature;
+      };
+      const attach = await fileService.attachDecryptionProof(
+        file,
+        user.address,
+        allowlistId,
+        signer,
+      );
+      if (!attach.success) {
+        toast.error(attach.message || 'Failed to create decryption proof');
+        return;
+      }
+      console.log('Proof from attach', { hasProof: !!attach.proof, txBytesLen: attach.proof?.txBytesBase64?.length || 0 });
+      const result = await fileService.downloadAndMaybeDecrypt(file, user.address, useTestMode, attach.proof);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to decrypt and download file');
+      }
+      toast.success('File decrypted and downloaded');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to decrypt file');
+    }
+  };
+
+  const handleActionClick = async (file: FileMetadata) => {
+    try {
+      if (file.isEncrypted && !decryptedUrls[file.cid]) {
+        if (!user?.address) { toast.error('Wallet address required'); return; }
+        if (!file.encryptionKeys?.encryptionId && user?.address) {
+          const id = await fileService.peekEncryptionId(file, user.address, useTestMode);
+          if (id) file.encryptionKeys = { encryptionId: id };
+        }
+        if (!file.encryptionKeys?.encryptionId) { toast.error('Missing encryptionId for this file'); return; }
+        const allowlistId = await resolveOrCreateAllowlistId();
+        if (!allowlistId) { toast.error('Failed to prepare allowlist'); return; }
+        const signer = async (message: Uint8Array) => {
+          const result: any = await signPersonalMessageAsync({ message });
+          return typeof result === 'string' ? result : result.signature;
+        };
+        const attach = await fileService.attachDecryptionProof(
+          file,
+          user!.address,
+          allowlistId,
+          signer,
+        );
+        if (!attach.success || !attach.proof) { toast.error(attach.message || 'Failed to create decryption proof'); return; }
+        const res = await fileService.downloadAndMaybeDecrypt(file, user!.address, useTestMode, attach.proof, { autoSave: false });
+        if (!res.success || !res.blobUrl) throw new Error(res.error || 'Decryption failed');
+        setDecryptedUrls(prev => ({ ...prev, [file.cid]: res.blobUrl! }));
+        toast.success('Decryption complete — ready to download');
+        return;
+      }
+      const url = decryptedUrls[file.cid];
+      if (url) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.filename;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        setDecryptedUrls(prev => { const next = { ...prev }; delete next[file.cid]; return next; });
+      } else {
+        // For encrypted files, trigger the decryption process
+        if (file.isEncrypted) {
+          await decryptFile(file);
+        } else {
+          await fileService.downloadFile(file.cid, file.filename, user?.address || null, useTestMode);
+        }
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Action failed');
     }
   };
 
@@ -251,12 +466,12 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger }) => {
                 </div>
 
                 {/* Hidden action buttons - can be shown on hover or click */}
-                <div className="file-actions hidden">
+                <div className="file-actions">
                   <button
-                    onClick={() => downloadFile(file.cid, file.filename)}
+                    onClick={() => handleActionClick(file)}
                     className="action-button download"
                   >
-                    Download
+                    {file.isEncrypted ? (decryptedUrls[file.cid] ? 'Download' : 'Decrypt') : 'Download'}
                   </button>
                   <button
                     onClick={() => generateQuickShareLink(file.cid, file.filename)}

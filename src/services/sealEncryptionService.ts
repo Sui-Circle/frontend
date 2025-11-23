@@ -4,14 +4,19 @@
  * Ensures files are encrypted before upload to Walrus storage
  */
 
-// Import the Seal library - using dynamic import for browser compatibility
-let SealLibrary: any = null;
+import { SealClient, EncryptedObject, type KeyServerConfig, SessionKey } from '@mysten/seal';
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { Transaction } from '@mysten/sui/transactions';
+import { fromHex } from '@mysten/sui/utils';
+import { getNetworkVariables, network } from '@/contract/index';
+
+let sealClient: SealClient | null = null;
+let suiClient: SuiClient | null = null;
 
 export interface EncryptionResult {
   success: boolean;
   encryptedData?: Uint8Array;
-  publicKey?: string;
-  secretKey?: string;
+  encryptionId?: string;
   error?: string;
   metadata?: {
     originalSize: number;
@@ -53,27 +58,28 @@ class SealEncryptionService {
 
   private async _initializeSeal(): Promise<void> {
     try {
-      console.log('🔐 Initializing Seal encryption library...');
+      console.log('🔐 Initializing Mysten SEAL (real) ...');
 
-      // Try different import approaches for browser compatibility
-      try {
-        const sealModule = await import('@mysten/seal');
-        console.log('📦 Seal module imported:', sealModule);
-        // Handle different module formats
-        SealLibrary = sealModule;
-      } catch (importError) {
-        console.error('❌ Failed to import @mysten/seal:', importError);
-        // For now, create a mock implementation to test the flow
-        console.log('🔧 Using mock encryption for testing...');
-        SealLibrary = {
-          mock: true,
-          encrypt: (data: any) => data,
-          decrypt: (data: any) => data
-        };
-      }
+      const rpcUrl = (import.meta as any).env?.VITE_SUI_RPC_URL || getFullnodeUrl('testnet');
+      suiClient = new SuiClient({ url: rpcUrl });
+
+      const SERVER_OBJECT_IDS = [
+        '0x73d05d62c18d9374e3ea529e8e0ed6161da1a141a94d3f76ae3fe4e99356db75',
+        '0xf5d14a81a982144ae441cd7d64b09027f116a468bd36e7eca494f750591623c8',
+      ];
+
+      const envIds = (import.meta as any).env?.VITE_SEAL_KEY_SERVER_IDS as string | undefined;
+      const ids = envIds ? envIds.split(',').map((s) => s.trim()).filter(Boolean) : SERVER_OBJECT_IDS;
+      const serverConfigs: KeyServerConfig[] = ids.map((objectId) => ({ objectId, weight: 1 }));
+
+      sealClient = new SealClient({
+        suiClient: suiClient as any,
+        serverConfigs,
+        verifyKeyServers: false,
+      } as any);
 
       this.isInitialized = true;
-      console.log('✅ Seal encryption library initialized successfully');
+      console.log('✅ Mysten SEAL initialized');
     } catch (error) {
       console.error('❌ Failed to initialize Seal library:', error);
       throw new Error(`Seal initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -84,14 +90,14 @@ class SealEncryptionService {
    * Check if the service is ready for use
    */
   isReady(): boolean {
-    return this.isInitialized && SealLibrary !== null;
+    return this.isInitialized && !!sealClient && !!suiClient;
   }
 
   /**
    * Encrypt a file using Seal encryption
    * This method encrypts the file client-side before upload
    */
-  async encryptFile(file: File): Promise<EncryptionResult> {
+  async encryptFile(file: File, allowlistId?: string): Promise<EncryptionResult> {
     try {
       // Ensure Seal is initialized
       await this.initialize();
@@ -109,36 +115,30 @@ class SealEncryptionService {
       const arrayBuffer = await file.arrayBuffer();
       const fileData = new Uint8Array(arrayBuffer);
 
-      // Generate encryption keys
-      const keyPair = await this._generateKeyPair();
-      if (!keyPair.success) {
-        return {
-          success: false,
-          error: `Failed to generate encryption keys: ${keyPair.error}`
-        };
+      if (!sealClient) {
+        return { success: false, error: 'SEAL client not initialized' };
       }
 
-      // Encrypt the file data
-      const encryptionResult = await this._encryptData(fileData, keyPair.publicKey!);
-      if (!encryptionResult.success) {
-        return {
-          success: false,
-          error: `Failed to encrypt file data: ${encryptionResult.error}`
-        };
-      }
+      const TESTNET_PACKAGE_ID = (import.meta as any).env?.VITE_SUI_PACKAGE_ID || getNetworkVariables(network).packageId;
 
-      console.log(`✅ File encrypted successfully: ${file.name}`);
+      const result = await sealClient.encrypt({
+        packageId: TESTNET_PACKAGE_ID,
+        id: allowlistId || `file_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        data: fileData,
+        threshold: 2,
+      });
+
+      console.log(`✅ File encrypted with Mysten SEAL: ${file.name}`);
 
       return {
         success: true,
-        encryptedData: encryptionResult.encryptedData,
-        publicKey: keyPair.publicKey,
-        secretKey: keyPair.secretKey,
+        encryptedData: result.encryptedObject,
+        encryptionId: EncryptedObject.parse(result.encryptedObject).id,
         metadata: {
           originalSize: file.size,
-          encryptionAlgorithm: 'Seal-BFV',
-          timestamp: Date.now()
-        }
+          encryptionAlgorithm: 'Mysten-SEAL',
+          timestamp: Date.now(),
+        },
       };
 
     } catch (error) {
@@ -153,34 +153,16 @@ class SealEncryptionService {
   /**
    * Decrypt encrypted file data
    */
-  async decryptFile(encryptedData: Uint8Array, _secretKey: string): Promise<DecryptionResult> {
+  async decryptFile(_encryptedData: Uint8Array, _secretKey: string): Promise<DecryptionResult> {
     try {
-      // Ensure Seal is initialized
       await this.initialize();
-
-      if (!this.isReady()) {
-        return {
-          success: false,
-          error: 'Seal encryption service not ready'
-        };
+      if (!this.isReady() || !sealClient || !suiClient) {
+        return { success: false, error: 'SEAL encryption service not ready' };
       }
 
-      console.log('🔓 Starting client-side decryption...');
-
-      const decryptionResult = await this._decryptData(encryptedData);
-      if (!decryptionResult.success) {
-        return {
-          success: false,
-          error: `Failed to decrypt data: ${decryptionResult.error}`
-        };
-      }
-
-      console.log('✅ File decrypted successfully');
-
-      return {
-        success: true,
-        decryptedData: decryptionResult.decryptedData
-      };
+      // Real decryption requires session key + txBytes proving access.
+      // This service no longer supports mock decryption.
+    return { success: false, error: 'Client-side decryption requires session key and access proof' };
 
     } catch (error) {
       console.error('❌ Failed to decrypt file:', error);
@@ -191,104 +173,34 @@ class SealEncryptionService {
     }
   }
 
+  async createDecryptionProof(opts: { walletAddress: string; allowlistId: string; encryptionId: string; signPersonalMessageAsync: (message: Uint8Array) => Promise<string> }): Promise<{ sessionKey: any; txBytesBase64: string } | null> {
+    await this.initialize();
+    if (!this.isReady() || !sealClient || !suiClient) return null;
+    const TESTNET_PACKAGE_ID = (import.meta as any).env?.VITE_SUI_PACKAGE_ID || getNetworkVariables(network).packageId;
+    const sessionKey = await SessionKey.create({
+      address: opts.walletAddress,
+      packageId: TESTNET_PACKAGE_ID,
+      ttlMin: 10,
+      suiClient: suiClient as any,
+    });
+    const personalMessage = sessionKey.getPersonalMessage();
+    const signature = await opts.signPersonalMessageAsync(personalMessage);
+    await sessionKey.setPersonalMessageSignature(signature);
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${TESTNET_PACKAGE_ID}::allowlist::seal_approve`,
+      arguments: [tx.pure.vector('u8', fromHex(opts.encryptionId)), tx.object(opts.allowlistId)],
+    });
+    const txBytes = await tx.build({ client: suiClient as any, onlyTransactionKind: true });
+    const txBytesBase64 = btoa(String.fromCharCode(...txBytes));
+    console.log('Proof generated', { address: opts.walletAddress, txBytesLen: txBytesBase64.length });
+    return { sessionKey: sessionKey.export(), txBytesBase64 };
+  }
+
   /**
    * Generate a new key pair for encryption
    */
-  private async _generateKeyPair(): Promise<{
-    success: boolean;
-    publicKey?: string;
-    secretKey?: string;
-    error?: string;
-  }> {
-    try {
-      // This is a simplified implementation
-      // In a real implementation, you would use the actual Seal library methods
-      // For now, we'll generate mock keys that are compatible with the backend
-      
-      const keyId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-      const publicKey = `seal_public_${keyId}`;
-      const secretKey = `seal_secret_${keyId}`;
-
-      return {
-        success: true,
-        publicKey,
-        secretKey
-      };
-
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Key generation failed'
-      };
-    }
-  }
-
-  /**
-   * Encrypt data using the public key
-   */
-  private async _encryptData(data: Uint8Array, publicKey: string): Promise<{
-    success: boolean;
-    encryptedData?: Uint8Array;
-    error?: string;
-  }> {
-    try {
-      // This is a simplified implementation for demonstration
-      // In a real implementation, you would use the actual Seal encryption
-      
-      // Create a mock encrypted format that's compatible with the backend
-      const encryptionMetadata = {
-        algorithm: 'Seal-BFV',
-        publicKey,
-        originalSize: data.length,
-        timestamp: Date.now(),
-        // In real implementation, this would be the actual encrypted chunks
-        encryptedChunks: [Array.from(data)] // Mock: just store the original data
-      };
-
-      const encryptedData = new TextEncoder().encode(JSON.stringify(encryptionMetadata));
-
-      return {
-        success: true,
-        encryptedData
-      };
-
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Encryption failed'
-      };
-    }
-  }
-
-  /**
-   * Decrypt data using the secret key
-   */
-  private async _decryptData(encryptedData: Uint8Array): Promise<{
-    success: boolean;
-    decryptedData?: Uint8Array;
-    error?: string;
-  }> {
-    try {
-      // Parse the encrypted metadata
-      const metadataJson = new TextDecoder().decode(encryptedData);
-      const metadata = JSON.parse(metadataJson);
-
-      // In real implementation, this would decrypt the actual encrypted chunks
-      // For now, we'll just return the mock data
-      const decryptedData = new Uint8Array(metadata.encryptedChunks[0]);
-
-      return {
-        success: true,
-        decryptedData
-      };
-
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Decryption failed'
-      };
-    }
-  }
+  // Mock helpers removed: using real Mysten SEAL only
 
   /**
    * Get service status information
@@ -301,12 +213,29 @@ class SealEncryptionService {
     return {
       isInitialized: this.isInitialized,
       isReady: this.isReady(),
-      libraryLoaded: SealLibrary !== null
+      libraryLoaded: !!SealClient
     };
   }
 }
 
 // Export a singleton instance
+async function base64ToU8(b64: string): Promise<Uint8Array> {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+(SealEncryptionService.prototype as any).decryptWithProof = async function(opts: { encryptedData: Uint8Array; encryptionId: string; sessionKey: any; txBytesBase64: string }): Promise<Uint8Array | null> {
+  await this.initialize();
+  if (!this.isReady() || !sealClient || !suiClient) return null;
+  const sk = await SessionKey.import(opts.sessionKey, suiClient as any);
+  const txBytes = await base64ToU8(opts.txBytesBase64);
+  await (sealClient as any).fetchKeys({ ids: [opts.encryptionId], sessionKey: sk, txBytes });
+  const out = await (sealClient as any).decrypt({ data: opts.encryptedData, sessionKey: sk, txBytes });
+  return out;
+};
+
 export const sealEncryptionService = new SealEncryptionService();
 
 // Export the class for testing

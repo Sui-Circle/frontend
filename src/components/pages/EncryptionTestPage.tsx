@@ -25,8 +25,7 @@ interface UploadedFileInfo {
   contentType: string;
   isEncrypted?: boolean;
   encryptionKeys?: {
-    publicKey: string;
-    secretKey: string;
+    encryptionId: string;
   };
 }
 
@@ -171,9 +170,9 @@ export const EncryptionTestPage: React.FC<EncryptionTestPageProps> = ({ onBack }
                             <p><strong>Uploaded:</strong> {formatDate(file.uploadTimestamp)}</p>
                             {file.isEncrypted && file.encryptionKeys && (
                               <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                                <p className="text-xs font-medium text-yellow-800 mb-1">Encryption Keys:</p>
+                                <p className="text-xs font-medium text-yellow-800 mb-1">Encryption Id:</p>
                                 <p className="text-xs text-yellow-700">
-                                  <strong>Secret:</strong> <code>{file.encryptionKeys.secretKey}</code>
+                                  <code>{file.encryptionKeys.encryptionId}</code>
                                 </p>
                               </div>
                             )}

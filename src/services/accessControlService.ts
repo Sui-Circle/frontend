@@ -4,6 +4,7 @@
  */
 
 import { isValidSuiAddress } from '@mysten/sui/utils';
+import { fileService } from './fileService';
 
 const API_BASE_URL = 'http://localhost:3000';
 
@@ -113,15 +114,13 @@ class AccessControlService {
   /**
    * Get authorization headers for wallet-based auth
    */
-  private getWalletHeaders(walletAddress: string | null): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (walletAddress) {
-      headers['X-Wallet-Address'] = walletAddress;
-    }
-
+  private async getAuthHeaders(walletAddress: string | null, useTestMode: boolean): Promise<Record<string, string>> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (useTestMode) return headers;
+    if (!walletAddress) throw new Error('Wallet address required');
+    const auth = await fileService.authenticateWallet(walletAddress);
+    if (!auth.success || !auth.token) throw new Error(auth.message || 'Failed to authenticate wallet');
+    headers['Authorization'] = `Bearer ${auth.token}`;
     return headers;
   }
 
@@ -136,9 +135,9 @@ class AccessControlService {
     try {
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/access-control/test` 
-        : `${API_BASE_URL}/access-control/wallet`;
+        : `${API_BASE_URL}/access-control`;
 
-      const headers = this.getWalletHeaders(walletAddress);
+      const headers = await this.getAuthHeaders(walletAddress, useTestMode);
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -179,9 +178,9 @@ class AccessControlService {
     try {
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/access-control/test` 
-        : `${API_BASE_URL}/access-control/wallet`;
+        : `${API_BASE_URL}/access-control`;
 
-      const headers = this.getWalletHeaders(walletAddress);
+      const headers = await this.getAuthHeaders(walletAddress, useTestMode);
 
       const response = await fetch(endpoint, {
         method: 'PUT',
@@ -222,9 +221,9 @@ class AccessControlService {
     try {
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/access-control/validate-test` 
-        : `${API_BASE_URL}/access-control-validate-wallet`;
+        : `${API_BASE_URL}/access-control/validate`;
 
-      const headers = this.getWalletHeaders(walletAddress);
+      const headers = await this.getAuthHeaders(walletAddress, useTestMode);
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -267,9 +266,9 @@ class AccessControlService {
     try {
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/access-control/${fileCid}/test` 
-        : `${API_BASE_URL}/access-control/${fileCid}-wallet`;
+        : `${API_BASE_URL}/access-control/${fileCid}`;
 
-      const headers = this.getWalletHeaders(walletAddress);
+      const headers = await this.getAuthHeaders(walletAddress, useTestMode);
 
       const response = await fetch(endpoint, {
         method: 'GET',
@@ -307,15 +306,13 @@ class AccessControlService {
     try {
       const endpoint = useTestMode 
         ? `${API_BASE_URL}/access-control/validate-test` 
-        : `${API_BASE_URL}/access-control/${fileCid}/check-wallet`;
+        : `${API_BASE_URL}/access-control/${fileCid}/check`;
 
-      const headers = this.getWalletHeaders(walletAddress);
+      const headers = await this.getAuthHeaders(walletAddress, useTestMode);
 
-      const response = await fetch(endpoint, {
-        method: useTestMode ? 'POST' : 'GET',
-        headers,
-        body: useTestMode ? JSON.stringify({ fileCid }) : undefined,
-      });
+      const response = useTestMode
+        ? await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify({ fileCid }) })
+        : await fetch(endpoint, { method: 'GET', headers });
 
       const data = await response.json();
 
@@ -436,9 +433,9 @@ class AccessControlService {
     try {
       const endpoint = useTestMode
         ? `${API_BASE_URL}/access-control/share-link-test`
-        : `${API_BASE_URL}/access-control/share-link-wallet`;
+        : `${API_BASE_URL}/access-control/share-link`;
 
-      const headers = this.getWalletHeaders(walletAddress);
+      const headers = await this.getAuthHeaders(walletAddress, useTestMode);
 
       const response = await fetch(endpoint, {
         method: 'POST',

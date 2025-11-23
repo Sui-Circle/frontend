@@ -16,7 +16,7 @@ export interface EncryptionState {
 
 export interface UseEncryptionReturn {
   state: EncryptionState;
-  encryptFile: (file: File) => Promise<EncryptionResult>;
+  encryptFile: (file: File, allowlistId?: string) => Promise<EncryptionResult>;
   decryptFile: (encryptedData: Uint8Array, secretKey: string) => Promise<DecryptionResult>;
   clearError: () => void;
   initializeService: () => Promise<void>;
@@ -62,7 +62,7 @@ export const useSealEncryption = (): UseEncryptionReturn => {
   }, [initializeService]);
 
   // Encrypt a file
-  const encryptFile = useCallback(async (file: File): Promise<EncryptionResult> => {
+  const encryptFile = useCallback(async (file: File, allowlistId?: string): Promise<EncryptionResult> => {
     if (!state.isReady) {
       const result: EncryptionResult = {
         success: false,
@@ -74,7 +74,7 @@ export const useSealEncryption = (): UseEncryptionReturn => {
     setState(prev => ({ ...prev, isEncrypting: true, error: null }));
 
     try {
-      const result = await sealEncryptionService.encryptFile(file);
+      const result = await sealEncryptionService.encryptFile(file, allowlistId);
       
       if (!result.success) {
         setState(prev => ({ ...prev, error: result.error || 'Encryption failed' }));
